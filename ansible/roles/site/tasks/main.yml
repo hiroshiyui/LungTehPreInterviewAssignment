@@ -1,0 +1,53 @@
+---
+# Create the Frappe site (its database + sites/<site>/ directory). In the
+# compose variant this runs at every container start: the site directory and
+# the database live in named volumes, the rest of the bench in the image.
+- name: Create and configure the site as the bench user
+  become: true
+  become_user: "{{ frappe_user }}"
+  environment: "{{ bench_env }}"
+  block:
+    - name: Create site {{ site_name }}
+      ansible.builtin.command:
+        argv: "{{ site_new_argv + site_db_host_args }}"
+        chdir: "{{ bench_path }}"
+        creates: "{{ bench_path }}/sites/{{ site_name }}/site_config.json"
+      vars:
+        site_new_argv:
+          - "{{ bench_bin }}"
+          - new-site
+          - "{{ site_name }}"
+          - --db-root-username
+          - root
+          - --db-root-password
+          - "{{ mariadb_root_password }}"
+          - --admin-password
+          - "{{ admin_password }}"
+          # The DB user may only log in from where the bench runs: the same
+          # host in the VM, another container (any host) in compose.
+          - "--mariadb-user-host-login-scope={{ '%' if db_host | length > 0 else 'localhost' }}"
+        # Compose: the site directory is a volume mount point, so it always
+        # exists and new-site needs --force. Safe: this task only runs while
+        # site_config.json is missing, and new-site creates a new, randomly
+        # named database, so it never drops an existing one.
+        site_db_host_args: "{{ ['--db-host', db_host, '--force'] if db_host | length > 0 else [] }}"
+
+    # `new-site --set-default` only runs once, but in compose the bench-wide
+    # config comes fresh from the image whenever the container is recreated.
+    - name: Read common_site_config.json
+      ansible.builtin.slurp:
+        src: "{{ bench_path }}/sites/common_site_config.json"
+      register: site_common_config
+
+    - name: Make the site the default for any hostname - {{ site_name }}
+      ansible.builtin.copy:
+        dest: "{{ bench_path }}/sites/common_site_config.json"
+        content: "{{ site_common_config.content | b64decode | from_json | combine({'default_site': site_name}) | to_nice_json(indent=1) }}\n"
+        mode: "0644"
+
+    - name: Enable running unit tests on the site
+      ansible.builtin.command:
+        argv: ["{{ bench_bin }}", --site, "{{ site_name }}", set-config, allow_tests, "1", --parse]
+        chdir: "{{ bench_path }}"
+      when: run_app_tests | bool
+      changed_when: false   # set-config is idempotent

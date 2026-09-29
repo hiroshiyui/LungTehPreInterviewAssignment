@@ -1,0 +1,19 @@
+---
+# Run `bench start` (the Procfile: web, realtime, workers, scheduler, redis,
+# asset watcher) as a systemd service so the VM serves Frappe after every boot.
+- name: Install the frappe-bench systemd unit
+  ansible.builtin.template:
+    src: frappe-bench.service.j2
+    dest: /etc/systemd/system/frappe-bench.service
+    mode: "0644"
+  notify: Restart frappe-bench
+
+- name: Enable and start frappe-bench
+  ansible.builtin.systemd_service:
+    name: frappe-bench
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply pending service restarts
+  ansible.builtin.meta: flush_handlers

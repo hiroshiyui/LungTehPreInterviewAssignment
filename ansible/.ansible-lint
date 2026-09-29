@@ -1,0 +1,3 @@
+---
+# The playbook is kept clean at ansible-lint's strictest profile.
+profile: production

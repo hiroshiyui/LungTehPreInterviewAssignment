@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# bench's standard Procfile minus redis_cache/redis_queue, which run as
+# separate compose services (see compose.yaml).
+web: bench serve --port 8000
+socketio: bench socketio
+watch: bench watch
+schedule: bench schedule
+worker: bench worker 1>> logs/worker.log 2>> logs/worker.error.log

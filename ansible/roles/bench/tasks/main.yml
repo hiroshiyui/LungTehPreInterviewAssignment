@@ -1,0 +1,142 @@
+---
+# --- uv: Python toolchain manager (provides CPython 3.14 and frappe-bench) ---
+- name: Check installed uv version
+  ansible.builtin.command: /usr/local/bin/uv --version
+  register: bench_uv_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install uv {{ uv_version }}
+  when: bench_uv_installed.rc != 0 or bench_uv_installed.stdout.split()[1] != uv_version
+  vars:
+    bench_uv_triple: "{{ ansible_facts.architecture }}-unknown-linux-gnu"
+    bench_uv_url: "https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-{{ bench_uv_triple }}.tar.gz"
+  block:
+    - name: Download uv release tarball (checksum verified)
+      ansible.builtin.get_url:
+        url: "{{ bench_uv_url }}"
+        checksum: "sha256:{{ bench_uv_url }}.sha256"
+        dest: "/tmp/uv-{{ uv_version }}.tar.gz"
+        mode: "0644"
+
+    - name: Unpack uv into /usr/local/bin
+      ansible.builtin.unarchive:
+        src: "/tmp/uv-{{ uv_version }}.tar.gz"
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: [--strip-components=1]
+
+- name: Tasks run as the bench user
+  become: true
+  become_user: "{{ frappe_user }}"
+  environment: "{{ bench_env }}"
+  block:
+    - name: Install uv-managed CPython {{ python_version }}
+      ansible.builtin.command: uv python install {{ python_version }}
+      register: bench_uv_python
+      changed_when: "'Installed' in bench_uv_python.stderr"
+
+    - name: List installed uv tools
+      ansible.builtin.command: uv tool list
+      register: bench_uv_tools
+      changed_when: false
+
+    - name: Install frappe-bench {{ bench_version }}
+      ansible.builtin.command: >-
+        uv tool install --force --python {{ python_version }}
+        frappe-bench=={{ bench_version }}
+      when: ("frappe-bench v" ~ bench_version) not in bench_uv_tools.stdout
+      changed_when: true
+
+    # --- frappe source, pinned to an exact develop commit ---------------------
+    # bench can only clone a branch, so fetch the pinned commit into a local
+    # repository, name it `develop`, and point `bench init` at that.
+    - name: Fetch the pinned frappe commit {{ frappe_commit }}
+      when: frappe_commit | length > 0
+      ansible.builtin.shell:
+        executable: /bin/bash
+        cmd: |
+          set -euo pipefail
+          mkdir -p "{{ frappe_src_path }}" && cd "{{ frappe_src_path }}"
+          if [[ -d .git ]] && [[ "$(git rev-parse HEAD 2>/dev/null)" == "{{ frappe_commit }}" ]]; then
+            echo UNCHANGED; exit 0
+          fi
+          git init --quiet
+          git remote add origin "{{ frappe_repo }}" 2>/dev/null || git remote set-url origin "{{ frappe_repo }}"
+          git fetch --quiet --depth 1 origin "{{ frappe_commit }}"
+          git checkout --quiet -B "{{ frappe_branch }}" FETCH_HEAD
+      register: bench_frappe_src
+      changed_when: "'UNCHANGED' not in bench_frappe_src.stdout"
+
+    # --- bench ---------------------------------------------------------------
+    - name: Check for an existing bench
+      ansible.builtin.stat:
+        path: "{{ bench_path }}/apps/frappe"
+      register: bench_frappe
+
+    - name: Initialise the bench (clones frappe, builds venv and assets; slow)
+      when: not bench_frappe.stat.exists
+      block:
+        - name: Run bench init
+          ansible.builtin.command:
+            argv: "{{ bench_init_argv + bench_init_container_flags + [bench_name] }}"
+            chdir: "{{ frappe_home }}"
+          changed_when: true
+          vars:
+            bench_init_argv:
+              - "{{ bench_bin }}"
+              - init
+              - --frappe-path
+              - "{{ frappe_src_path if frappe_commit | length > 0 else frappe_repo }}"
+              - --frappe-branch
+              - "{{ frappe_branch }}"
+              - --python
+              - "{{ python_version }}"
+              - --dev
+            # Compose runs redis as separate services: no local redis config,
+            # and a Procfile without redis (templated below).
+            bench_init_container_flags: "{{ ['--no-procfile', '--skip-redis-config-generation'] if deploy_target == 'container' else [] }}"
+      rescue:
+        # A half-initialised bench makes the next `bench init` refuse to run.
+        - name: Remove the partially initialised bench
+          ansible.builtin.file:
+            path: "{{ bench_path }}"
+            state: absent
+
+        - name: Abort
+          ansible.builtin.fail:
+            msg: "bench init failed; see the output above. The partial bench was removed, re-run provisioning."
+
+    - name: Point frappe's upstream remote at GitHub (so `bench update` works)
+      ansible.builtin.command:
+        argv: [git, remote, set-url, upstream, "{{ frappe_repo }}"]
+        chdir: "{{ bench_path }}/apps/frappe"
+      changed_when: false
+
+# --- compose variant: use the redis services instead of local redis --------
+- name: Point the bench at external services
+  when: deploy_target == 'container'
+  become: true
+  become_user: "{{ frappe_user }}"
+  block:
+    - name: Read common_site_config.json
+      ansible.builtin.slurp:
+        src: "{{ bench_path }}/sites/common_site_config.json"
+      register: bench_common_config
+
+    - name: Set the redis URLs in common_site_config.json
+      ansible.builtin.copy:
+        dest: "{{ bench_path }}/sites/common_site_config.json"
+        content: "{{ bench_common_config.content | b64decode | from_json | combine(bench_redis_config) | to_nice_json(indent=1) }}\n"
+        mode: "0644"
+      vars:
+        bench_redis_config:
+          redis_cache: "{{ redis_cache_url }}"
+          redis_queue: "{{ redis_queue_url }}"
+          redis_socketio: "{{ redis_queue_url }}"
+
+    - name: Write a Procfile without redis processes
+      ansible.builtin.template:
+        src: Procfile.container.j2
+        dest: "{{ bench_path }}/Procfile"
+        mode: "0644"

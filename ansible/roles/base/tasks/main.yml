@@ -1,0 +1,54 @@
+---
+- name: Install OS packages needed to build and run Frappe
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - acl
+      - ca-certificates
+      - cron
+      - curl
+      - file              # used by `bench restore` to detect archive types
+      - git
+      - gnupg
+      - libffi-dev
+      - libmariadb-dev
+      - libssl-dev
+      - mariadb-client
+      - pkg-config
+      - python3-debian
+      - redis-server
+      - rsync
+      - xz-utils
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# bench runs its own redis-cache / redis-queue processes from the Procfile,
+# the distro instance is not needed.
+- name: VM-only system settings (containers share the host kernel and have no systemd)
+  when: deploy_target == 'vm'
+  block:
+    - name: Disable the system redis-server service
+      ansible.builtin.systemd_service:
+        name: redis-server
+        state: stopped
+        enabled: false
+
+    - name: Raise inotify watch limit for `bench watch` / esbuild
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/60-frappe-inotify.conf
+        content: |
+          fs.inotify.max_user_watches = 524288
+        mode: "0644"
+      notify: Reload sysctl
+
+- name: Ensure the bench user exists
+  ansible.builtin.user:
+    name: "{{ frappe_user }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Make the bench user's home traversable (static assets are served from it)
+  ansible.builtin.file:
+    path: "{{ frappe_home }}"
+    mode: "0755"

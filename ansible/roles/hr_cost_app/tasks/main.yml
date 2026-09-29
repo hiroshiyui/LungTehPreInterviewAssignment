@@ -1,0 +1,77 @@
+---
+# Install the custom app from this repository (needs the bench running:
+# migrate and install-app talk to its redis). Equivalent to
+# `bench get-app` + `bench install-app`, except the app directory is a
+# symlink to the shared folder so the repo stays the single source of truth.
+- name: Check the app source is available
+  ansible.builtin.stat:
+    path: "{{ app_source_path }}/pyproject.toml"
+  register: hr_cost_app_source
+  failed_when: not hr_cost_app_source.stat.exists
+
+- name: Install the custom app into the bench - {{ app_name }}
+  become: true
+  become_user: "{{ frappe_user }}"
+  environment: "{{ bench_env }}"
+  block:
+    - name: Link the app into the bench's apps/ directory
+      ansible.builtin.file:
+        src: "{{ app_source_path }}"
+        dest: "{{ bench_path }}/apps/{{ app_name }}"
+        state: link
+      notify: Restart frappe-bench
+
+    - name: Check whether the app is installed in the bench virtualenv
+      ansible.builtin.command:
+        argv: [uv, pip, show, "{{ app_name }}", --python, "{{ bench_path }}/env/bin/python"]
+      register: hr_cost_app_pip
+      changed_when: false
+      failed_when: false
+
+    - name: Install the app into the bench virtualenv (editable)
+      ansible.builtin.command:
+        argv: [uv, pip, install, --python, "{{ bench_path }}/env/bin/python", -e, "apps/{{ app_name }}"]
+        chdir: "{{ bench_path }}"
+      when: hr_cost_app_pip.rc != 0
+      changed_when: true
+      notify: Restart frappe-bench
+
+    - name: Register the app in sites/apps.txt
+      ansible.builtin.lineinfile:
+        path: "{{ bench_path }}/sites/apps.txt"
+        line: "{{ app_name }}"
+      notify: Restart frappe-bench
+
+    - name: List apps installed on the site
+      ansible.builtin.command:
+        argv: ["{{ bench_bin }}", --site, "{{ site_name }}", list-apps, --format, json]
+        chdir: "{{ bench_path }}"
+      register: hr_cost_app_site_apps
+      changed_when: false
+
+    - name: Install the app on {{ site_name }}
+      ansible.builtin.command:
+        argv: ["{{ bench_bin }}", --site, "{{ site_name }}", install-app, "{{ app_name }}"]
+        chdir: "{{ bench_path }}"
+      when: app_name not in hr_cost_app_site_apps.stdout
+      register: hr_cost_app_installed
+      changed_when: true
+
+    # Syncs DocType/Report JSON changes made on the host since the last run.
+    - name: Migrate the site
+      ansible.builtin.command:
+        argv: ["{{ bench_bin }}", --site, "{{ site_name }}", migrate]
+        chdir: "{{ bench_path }}"
+      when: hr_cost_app_installed is skipped
+      changed_when: false   # migrate is idempotent
+
+    - name: Load demo data
+      ansible.builtin.command:
+        argv: ["{{ bench_bin }}", --site, "{{ site_name }}", execute, "{{ app_name }}.demo.create_demo_data"]
+        chdir: "{{ bench_path }}"
+      when: load_demo_data | bool
+      register: hr_cost_app_demo
+      changed_when: "'\"created\": 0' not in hr_cost_app_demo.stdout"
+
+- name: Restart the bench if the app changed
+  ansible.builtin.meta: flush_handlers

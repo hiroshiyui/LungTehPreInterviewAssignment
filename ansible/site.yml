@@ -1,0 +1,27 @@
+---
+# Provision a Frappe (develop branch) development environment and the
+# hr_cost custom app. Runs inside the Vagrant guest (ansible_local) by
+# default; with `-e @vars/container.yml` it builds and starts the frappe
+# service of compose.yaml instead (deploy_target: container).
+- name: Frappe development environment
+  hosts: all
+  become: true
+  roles:
+    - role: base
+      tags: [base]
+    - role: mariadb          # compose: the `mariadb` service instead
+      tags: [mariadb]
+      when: deploy_target == 'vm'
+    - role: nodejs
+      tags: [nodejs]
+    - role: bench
+      tags: [bench]
+    - role: site
+      tags: [site]
+    - role: bench_service    # compose: the container's entrypoint instead
+      tags: [service]
+      when: deploy_target == 'vm'
+    - role: hr_cost_app
+      tags: [app]
+    - role: verify
+      tags: [verify]

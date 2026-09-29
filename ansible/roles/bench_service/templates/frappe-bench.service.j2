@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+# Development server: runs the bench Procfile (web, realtime, workers,
+# scheduler, redis, asset watcher) via `bench start`.
+[Unit]
+Description=Frappe bench ({{ bench_path }})
+Wants=network-online.target
+After=network-online.target mariadb.service
+Requires=mariadb.service
+
+[Service]
+Type=simple
+User={{ frappe_user }}
+WorkingDirectory={{ bench_path }}
+{% for key, value in bench_env.items() %}
+Environment={{ key }}={{ value }}
+{% endfor %}
+# `bench serve` binds to 127.0.0.1 by default, which VirtualBox NAT
+# port forwarding cannot reach.
+Environment=FRAPPE_BIND_ADDR=0.0.0.0
+# The custom app lives on the Vagrant shared folder, which is mounted
+# only after boot; wait for it instead of crashing on import.
+ExecStartPre=/bin/sh -c 'until [ -e "{{ app_source_path }}/pyproject.toml" ]; do sleep 2; done'
+TimeoutStartSec=300
+ExecStart={{ bench_bin }} start
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

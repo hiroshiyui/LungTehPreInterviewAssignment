@@ -1,0 +1,14 @@
+---
+# Overrides for the podman-compose variant (compose.yaml). Loaded with
+# `-e @vars/container.yml` both when the frappe image is built and each time
+# the container starts. The VM keeps the defaults from group_vars/all.yml.
+deploy_target: container
+frappe_user: frappe
+
+# Services from compose.yaml, reached by their service names.
+db_host: mariadb
+redis_cache_url: redis://redis-cache:6379
+redis_queue_url: redis://redis-queue:6379
+
+# The repository is bind-mounted here (see compose.yaml).
+app_source_path: /workspace/apps/hr_cost

@@ -1,0 +1,56 @@
+---
+- name: Wait for the Frappe web server
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8000/api/method/ping
+    return_content: true
+  register: verify_ping
+  until: verify_ping.status == 200 and verify_ping.json.message == 'pong'
+  retries: 60
+  delay: 5
+
+- name: Log in as Administrator
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8000/api/method/login
+    method: POST
+    body_format: json
+    body:
+      usr: Administrator
+      pwd: "{{ admin_password }}"
+  register: verify_login
+  no_log: true
+
+- name: Run the Daily HR Cost report through the REST API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:8000/api/method/frappe.desk.query_report.run?{{ verify_report_query | urlencode }}"
+    headers:
+      Cookie: "{{ verify_login.cookies_string }}"
+    return_content: true
+  vars:
+    verify_report_query:
+      report_name: Daily HR Cost
+      filters: "{{ {'from_date': '2000-01-01', 'to_date': '2100-12-31'} | to_json }}"
+  register: verify_report
+
+- name: Check the report returned data
+  ansible.builtin.assert:
+    that:
+      - verify_report.json.message.columns | length > 0
+      - (not load_demo_data | bool) or (verify_report.json.message.result | length > 0)
+    quiet: true
+
+- name: Run the app's unit tests
+  become: true
+  become_user: "{{ frappe_user }}"
+  environment: "{{ bench_env }}"
+  ansible.builtin.command:
+    argv: ["{{ bench_bin }}", --site, "{{ site_name }}", run-tests, --app, "{{ app_name }}"]
+    chdir: "{{ bench_path }}"
+  when: run_app_tests | bool
+  changed_when: false
+
+- name: Done
+  ansible.builtin.debug:
+    msg:
+      - "Frappe {{ frappe_branch }} is up. Open http://localhost:8000 on the host."
+      - "Login: Administrator / {{ admin_password }}"
+      - "Report: http://localhost:8000/desk/query-report/Daily HR Cost"

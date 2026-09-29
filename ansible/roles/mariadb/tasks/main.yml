@@ -1,0 +1,48 @@
+---
+- name: Install MariaDB
+  ansible.builtin.apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+    state: present
+
+- name: Configure MariaDB for Frappe (utf8mb4)
+  ansible.builtin.copy:
+    src: 99-frappe.cnf
+    dest: /etc/mysql/mariadb.conf.d/99-frappe.cnf
+    mode: "0644"
+  notify: Restart MariaDB
+
+- name: Start MariaDB
+  ansible.builtin.systemd_service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Apply pending MariaDB restarts before touching the server
+  ansible.builtin.meta: flush_handlers
+
+- name: Check whether the root password is already set
+  ansible.builtin.command:
+    argv: [mariadb, -uroot, "-p{{ mariadb_root_password }}", --protocol=TCP, -e, "SELECT 1"]
+  register: mariadb_root_check
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+# Keep unix_socket auth for the OS root user and add a password so
+# `bench new-site` (running as the bench user) can authenticate as DB root.
+- name: Set the MariaDB root password
+  ansible.builtin.command:
+    argv:
+      - mariadb
+      - -uroot
+      - -e
+      - >-
+        ALTER USER 'root'@'localhost'
+        IDENTIFIED VIA unix_socket
+        OR mysql_native_password USING PASSWORD('{{ mariadb_root_password }}');
+        FLUSH PRIVILEGES;
+  when: mariadb_root_check.rc != 0
+  changed_when: true
+  no_log: true
