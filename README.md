@@ -100,6 +100,11 @@ new SHA there (`git ls-remote https://github.com/frappe/frappe refs/heads/develo
 > Frappe 17 serves the desk under `/desk`. The older `/app/...` URLs still
 > work and redirect there.
 
+> **Signing in:** the sign-in page labels its first box **Email**, but it
+> takes a username too: type `Administrator` there (not an email address) and
+> `admin` as the password. The dots already in the password box are only a
+> placeholder.
+
 > **First login:** Frappe opens a one-time *Welcome* setup wizard (language,
 > country, time zone, currency) before the desk. Fill it in once per site;
 > the currency you pick is the one the pay figures are shown in.
