@@ -36,15 +36,51 @@ move it to "Decided against" with the reason.
 - [ ] Health checks for the `frappe` compose service (`/api/method/ping`), so
   `podman compose ps` shows "healthy".
 
-## App
+## App (`hr_cost`)
 
-- [ ] A "Monthly HR Cost" view (group by month) next to the daily report. The
-  assignment's "calculate monthly" is currently covered by the report's
-  period summary.
-- [ ] Workspace / sidebar entry for the HR Cost module (Frappe 17 dock) so
-  Employees, Work Records and the report are one click away.
-- [ ] Roles: a dedicated "HR Manager" role instead of System Manager only.
-  This needs permission-aware report queries (see the `security-audit` skill).
+From the app review of 2026-09-29. Work through the steps in order; each
+item ships with its tests.
+
+### Step 1 — Correctness
+
+Done: rates by work date (Hourly Rate History), re-costing on corrections,
+no future dates, the Employee row lock, `date` and `(employee, date)`
+indexes, and the missing tests. One gap remains:
+
+- [ ] The row lock that serialises the 24 h check has no automated test: a
+  deterministic test needs two concurrent database connections, which the
+  Frappe test runner doesn't provide.
+
+### Step 2 — "Calculate monthly" (the assignment's wording)
+
+- [ ] A monthly view: a "Group by: Day / Week / Month" filter, or a "Monthly
+  HR Cost by Employee" report (employees × months).
+- [ ] Optionally show days without work as zero rows, so the chart's time axis
+  is honest.
+
+### Step 3 — Roles and pay confidentiality
+
+- [ ] HR Manager (full) and HR User (enters work records) roles instead of
+  System Manager only.
+- [ ] `hourly_rate` and `cost` at `permlevel` 1, readable only by HR Manager.
+- [ ] Make the report permission-aware before widening its roles
+  (`frappe.qb` bypasses user permissions), and test that other roles are
+  refused.
+
+### Step 4 — Polish
+
+- [ ] Report: aggregate the chart by month for ranges over ~2 months; drill
+  down from a day to its Work Records.
+- [ ] `employee_name` on Work Record is copied at save time and goes stale
+  when an Employee is renamed: drop it (links already show the current name)
+  or refresh it on Employee save.
+- [ ] `allow_rename` and `index_web_pages_for_search` are on for both
+  DocTypes; neither makes sense for them.
+- [ ] Duplicate employee names are indistinguishable in link dropdowns.
+- [ ] `allow_import` + quick entry for Work Record (bulk / fast logging).
+- [ ] Employee "Connections" to its Work Records; a workspace / dock entry for
+  the module.
+- [ ] `pyproject.toml` still mentions `frappe~=16.0.0`.
 
 ## Docs
 

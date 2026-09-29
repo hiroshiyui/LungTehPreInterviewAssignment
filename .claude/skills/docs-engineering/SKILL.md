@@ -64,7 +64,7 @@ Check every item against the **current code**, without exception:
   - the shared-folder wait;
   - the Socket.IO port;
   - the pinned-commit-as-local-branch trick;
-  - the rate snapshot;
+  - costing by the rate valid on the work date;
   - the service-before-app role order;
   - `new-site --force` in containers;
   - `keep-id` + `user: root`;

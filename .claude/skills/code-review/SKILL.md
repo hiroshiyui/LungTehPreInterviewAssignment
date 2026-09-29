@@ -105,12 +105,15 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
 ## Step 4 — The hr_cost app: correctness
 
 - **Work Record business rules** (`work_record.py`):
-  - `hourly_rate` is snapshotted from the Employee on create, or when the employee changes.
+  - `hourly_rate` is the rate **valid on the record's date** from the Employee's Hourly Rate
+    History, never today's rate. History edits re-cost affected records; an edit that would
+    leave a record without a rate is refused.
+  - No future dates; the Employee row is locked (`for_update`) during the 24 h check.
   - `cost = hours_worked × hourly_rate`, rounded with `self.precision("cost")`.
   - `hours_worked > 0`, and at most 24 h per employee per date, summed across *other*
     records (`name != self.name`, so an edit doesn't count itself).
 - **Report** (`report/daily_hr_cost/daily_hr_cost.py`) sums the **stored** `cost`. It must
-  never recompute from the current rate, because that would rewrite history.
+  never recompute from a current rate, because that would rewrite history.
   - It validates the filters (both dates required, from ≤ to).
   - It returns `columns, data, None, chart, summary`, and `chart` is `None` when there's no
     data.
@@ -147,7 +150,7 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
 - The version tables (chapter 2, 3.1, 4.1), the URLs (Frappe 17 uses `/desk/...`), the credentials, and
   the troubleshooting table all match the current code.
 - `CLAUDE.md` and `apps/hr_cost/README.md` agree with the code.
-- Comments explain *why* (NAT binding, world-writable cwd, rate snapshot), not *what*.
+- Comments explain *why* (NAT binding, world-writable cwd, rate by work date), not *what*.
   A non-obvious line with no *why* comment is a Minor finding. In a tutorial it's a missed
   lesson.
 

@@ -74,8 +74,12 @@ reload the page.
   `_DOCTYPE_NAME` untouched. Frappe rewrites them.
 - Business rules live on the **server** (`validate()`). The client script
   (`work_record.js`) only previews values.
-- The report sums the **stored** `cost` of each Work Record. Never recompute it
-  from the employee's current rate.
+- A Work Record's rate is the one **valid on its date**, from the employee's
+  Hourly Rate History (`get_hourly_rate` in `employee.py`), never the current
+  rate. The report sums the **stored** `cost`; history edits re-cost records
+  through `recalculate_work_records`.
+- Schema changes that affect existing data ship with a patch in
+  `hr_cost/patches/` (listed in `patches.txt`), plus a test for it.
 - Tests use `IntegrationTestCase`, roll back in `tearDown`, and use dates in 2001
   so they never collide with the demo data. Shared helpers are in
   `hr_cost/tests/utils.py`.
@@ -86,10 +90,13 @@ Where things are:
 
 | Path | What |
 | --- | --- |
-| `apps/hr_cost/hr_cost/hr_cost/doctype/employee/` | Employee DocType + controller + tests |
-| `apps/hr_cost/hr_cost/hr_cost/doctype/work_record/` | Work Record: rate snapshot, cost, 24 h cap |
+| `apps/hr_cost/hr_cost/hr_cost/doctype/employee/` | Employee: rate history rules, rate lookup by date, re-costing + tests |
+| `apps/hr_cost/hr_cost/hr_cost/doctype/employee_hourly_rate/` | the Hourly Rate History rows (child DocType) |
+| `apps/hr_cost/hr_cost/hr_cost/doctype/work_record/` | Work Record: rate by date, cost, no future dates, 24 h cap, indexes |
 | `apps/hr_cost/hr_cost/hr_cost/report/daily_hr_cost/` | the Script Report (py + js filters) + tests |
-| `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning) |
+| `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning; includes a raise) |
+| `apps/hr_cost/hr_cost/patches/` | data migrations run by `bench migrate` |
+| `apps/hr_cost/hr_cost/tests/` | shared test helpers; demo and patch tests |
 
 ## 3. Working on the provisioning
 
