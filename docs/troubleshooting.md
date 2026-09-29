@@ -15,6 +15,7 @@ When you solve a new problem, add a row here.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
+| After login, a "Welcome" form asks for language, country, time zone and currency | Frappe's one-time setup wizard for a new site | fill it in once; the currency is what pay is shown in |
 | `http://localhost:8000` doesn't load right after start | the first start is still creating the site or migrating | wait for `Running on http://…:8000` in the logs |
 | Page loads, but live updates / "realtime" don't work | host port 9000 is not reachable | keep 9000 free on the host; it can't be remapped (the browser connects to 9000) |
 | `Cannot run bench migrate without the services running` | the bench's redis isn't up | VirtualBox: `sudo systemctl start frappe-bench`; Podman: `podman compose up -d` (the redis services) |

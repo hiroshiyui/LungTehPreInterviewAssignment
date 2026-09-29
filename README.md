@@ -100,6 +100,10 @@ new SHA there (`git ls-remote https://github.com/frappe/frappe refs/heads/develo
 > Frappe 17 serves the desk under `/desk`. The older `/app/...` URLs still
 > work and redirect there.
 
+> **First login:** Frappe opens a one-time *Welcome* setup wizard (language,
+> country, time zone, currency) before the desk. Fill it in once per site;
+> the currency you pick is the one the pay figures are shown in.
+
 ---
 
 ## 3. VirtualBox (Vagrant)

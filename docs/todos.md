@@ -82,6 +82,9 @@ One gap remains:
 ## Docs
 
 - [ ] Screenshots of the report and the forms in the README (with alt text).
+- [ ] Provisioning could complete Frappe's first-login setup wizard (language,
+  country, time zone, currency) from `group_vars`, so the demo opens straight
+  on the desk. For now the README and troubleshooting explain it.
 - [ ] `CHANGELOG.md` and the first tagged release (`release-engineering` skill).
 
 ## Decided against
