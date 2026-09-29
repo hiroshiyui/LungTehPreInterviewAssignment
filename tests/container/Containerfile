@@ -1,0 +1,13 @@
+# Stand-in for the Vagrant box, used to test the playbook without VirtualBox:
+# Ubuntu 24.04 + systemd as PID 1 + a `vagrant` user (uid 1000).
+FROM docker.io/library/ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends systemd systemd-sysv sudo \
+      python3 python3-apt python3-venv ca-certificates iproute2 \
+ && rm -rf /var/lib/apt/lists/* \
+ && (userdel -r ubuntu || true) \
+ && useradd -m -u 1000 -s /bin/bash vagrant \
+ && echo 'vagrant ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/vagrant
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
