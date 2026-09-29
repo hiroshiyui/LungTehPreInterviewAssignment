@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A pre-interview assignment kept as a long-term **beginners' onboarding tutorial**:
 
 - a reproducible **Frappe `develop`** dev environment;
-- the custom app `apps/hr_cost`: Employee and Work Record DocTypes, plus the "Daily HR Cost" script report.
+- the custom app `apps/hr_cost`: Employee and Work Record DocTypes, plus the "Daily HR Cost" and "Monthly HR Cost" script reports.
 
 There are two ways to run it, both built by the **same Ansible playbook**:
 
@@ -89,7 +89,7 @@ Backups: `scripts/backup.sh [--target compose|vm] [--dry-run]` and `scripts/rest
   - the `(employee, date)` index comes from `on_doctype_update` in `work_record.py` (Frappe JSON only declares single-column indexes);
   - `cost = hours × rate`;
   - at most 24 h per employee per date.
-- The report (`report/daily_hr_cost/daily_hr_cost.py`) is a `frappe.qb` GROUP BY over the **stored** `cost`. `frappe.qb` bypasses user permissions, which is acceptable only while the report is System-Manager-only.
+- The reports (`report/daily_hr_cost/`, `report/monthly_hr_cost/`) are `frappe.qb` GROUP BYs over the **stored** `cost` (by date; by employee and month). `frappe.qb` bypasses user permissions, which is acceptable only while the reports are System-Manager-only.
 - Tests use `IntegrationTestCase`, roll back in `tearDown`, and use 2001 dates to avoid the demo data. Helpers are in `hr_cost/tests/utils.py`.
 - `demo.create_demo_data` must stay idempotent. Provisioning's `changed_when` matches its `{"created": 0}` output.
 - Frappe 17 serves the desk at `/desk/...`; `/app/...` redirects there.

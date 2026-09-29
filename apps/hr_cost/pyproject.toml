@@ -3,7 +3,7 @@ name = "hr_cost"
 authors = [
     { name = "Hui-Hong You", email = "hiroshiyui@gmail.com"}
 ]
-description = "Employees, work records and daily HR cost reporting"
+description = "Employees, work records and daily and monthly HR cost reporting"
 requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]

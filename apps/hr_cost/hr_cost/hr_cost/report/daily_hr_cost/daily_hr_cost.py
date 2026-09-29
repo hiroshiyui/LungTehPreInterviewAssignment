@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Count, Sum
-from frappe.utils import flt, formatdate, getdate
+from frappe.utils import add_days, flt, formatdate, getdate
 
 
 def execute(filters: dict | None = None):
@@ -13,6 +13,8 @@ def execute(filters: dict | None = None):
 	validate_filters(filters)
 
 	data = get_data(filters)
+	if filters.show_empty_days:
+		data = fill_empty_days(data, getdate(filters.from_date), getdate(filters.to_date))
 	return get_columns(), data, None, get_chart(data), get_summary(data)
 
 
@@ -52,6 +54,19 @@ def get_data(filters: frappe._dict) -> list[dict]:
 	return query.run(as_dict=True)
 
 
+def fill_empty_days(data: list[dict], from_date, to_date) -> list[dict]:
+	"""Add a zero row for every date in the range without work, so the chart's
+	time axis is continuous: a quiet week shows as zero bars instead of vanishing."""
+	by_date = {row.date: row for row in data}
+	filled, day = [], from_date
+	while day <= to_date:
+		filled.append(
+			by_date.get(day) or frappe._dict(date=day, employees=0, hours_worked=0, hr_cost=0)
+		)
+		day = add_days(day, 1)
+	return filled
+
+
 def get_chart(data: list[dict]) -> dict | None:
 	if not data:
 		return None
@@ -68,7 +83,7 @@ def get_chart(data: list[dict]) -> dict | None:
 def get_summary(data: list[dict]) -> list[dict]:
 	total_cost = sum(flt(row.hr_cost) for row in data)
 	total_hours = sum(flt(row.hours_worked) for row in data)
-	days = len(data)
+	days = sum(1 for row in data if row.hours_worked)  # zero rows aren't days with work
 	return [
 		{"label": _("Total HR Cost"), "value": total_cost, "datatype": "Currency", "indicator": "Blue"},
 		{"label": _("Total Hours"), "value": total_hours, "datatype": "Float", "indicator": "Green"},

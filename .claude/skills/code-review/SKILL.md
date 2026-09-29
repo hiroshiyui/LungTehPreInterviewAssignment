@@ -112,10 +112,10 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
   - `cost = hours_worked × hourly_rate`, rounded with `self.precision("cost")`.
   - `hours_worked > 0`, and at most 24 h per employee per date, summed across *other*
     records (`name != self.name`, so an edit doesn't count itself).
-- **Report** (`report/daily_hr_cost/daily_hr_cost.py`) sums the **stored** `cost`. It must
+- **Reports** (`report/daily_hr_cost/`, `report/monthly_hr_cost/`) sum the **stored** `cost`. They must
   never recompute from a current rate, because that would rewrite history.
-  - It validates the filters (both dates required, from ≤ to).
-  - It returns `columns, data, None, chart, summary`, and `chart` is `None` when there's no
+  - Each validates its filters (both dates required, from ≤ to).
+  - Each returns `columns, data, None, chart, summary`, and `chart` is `None` when there's no
     data.
 - **Generated code stays generated.** DocType and Report JSON come from Frappe's developer
   mode. The `# begin/end: auto-generated types` blocks and `_DOCTYPE_NAME` must be untouched.

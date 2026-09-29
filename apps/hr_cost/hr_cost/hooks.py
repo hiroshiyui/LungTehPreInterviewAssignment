@@ -1,7 +1,7 @@
 app_name = "hr_cost"
 app_title = "HR Cost"
 app_publisher = "Hui-Hong You"
-app_description = "Employees, work records and daily HR cost reporting"
+app_description = "Employees, work records and daily and monthly HR cost reporting"
 app_email = "hiroshiyui@gmail.com"
 app_license = "mit"
 

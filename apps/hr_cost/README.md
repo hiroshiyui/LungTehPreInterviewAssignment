@@ -1,13 +1,14 @@
 ### HR Cost
 
 A Frappe app that records employees' working hours and reports the total HR
-cost per day.
+cost per day and per month.
 
 | DocType / Report | Purpose |
 | --- | --- |
 | **Employee** | `Employee Name`, `Hourly Rate` (must be > 0), and an **Hourly Rate History** table (child DocType *Employee Hourly Rate*: `Valid From`, `Hourly Rate`). Named `EMP-00001`, … and shown by name in links. |
 | **Work Record** | `Employee` (link) + fetched `Employee Name`, `Date`, `Hours Worked`. On save it takes the rate **valid on its date** from the history and stores `Cost = Hours Worked × Hourly Rate`. |
-| **Daily HR Cost** (Script Report) | One row per day: number of employees, hours worked, total HR cost. Filters: date range (defaults to the current month) and an optional employee. Also shows a bar chart and period totals (total cost, total hours, days with work, average cost per day). |
+| **Daily HR Cost** (Script Report) | One row per day: number of employees, hours worked, total HR cost. Filters: date range (defaults to the current month) and an optional employee. Also shows a bar chart and period totals (total cost, total hours, days with work, average cost per day). "Show days without work" adds zero rows for the chart's time axis. |
+| **Monthly HR Cost** (Script Report) | One row per employee, one column per month in the range (months without work show 0), plus the employee's total hours and cost, and a total row. Filters: date range (defaults to the current year) and an optional employee. Also shows a bar chart per month and totals (total cost, total hours, employees, average cost per month with work). |
 
 Business rules:
 

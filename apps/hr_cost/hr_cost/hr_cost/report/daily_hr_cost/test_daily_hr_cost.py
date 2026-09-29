@@ -53,3 +53,11 @@ class IntegrationTestDailyHRCost(IntegrationTestCase):
 
 	def test_invalid_range(self):
 		self.assertRaises(frappe.ValidationError, execute, {"from_date": "2001-02-02", "to_date": "2001-02-01"})
+
+	def test_show_empty_days_fills_the_range_with_zero_rows(self):
+		data, chart, summary = self.run_report(to_date="2001-02-04", show_empty_days=1)
+		self.assertEqual([row.date for row in data], [getdate(f"2001-02-0{d}") for d in range(1, 5)])
+		self.assertEqual([row.hr_cost for row in data], [1600, 200, 0, 0])
+		self.assertEqual(chart["data"]["datasets"][0]["values"], [1600, 200, 0, 0])
+		self.assertEqual(summary["Days With Work"], 2)  # zero rows don't count
+		self.assertEqual(summary["Average HR Cost / Day"], 900)

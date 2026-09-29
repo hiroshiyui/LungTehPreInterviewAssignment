@@ -41,36 +41,33 @@ move it to "Decided against" with the reason.
 From the app review of 2026-09-29. Work through the steps in order; each
 item ships with its tests.
 
-### Step 1 — Correctness
+### Steps 1 and 2 — Correctness, and "calculate monthly"
 
-Done: rates by work date (Hourly Rate History), re-costing on corrections,
-no future dates, the Employee row lock, `date` and `(employee, date)`
-indexes, and the missing tests. One gap remains:
+Done:
+- step 1: rates by work date (Hourly Rate History), re-costing on
+  corrections, no future dates, the Employee row lock, `date` and
+  `(employee, date)` indexes, and the missing tests;
+- step 2: the Monthly HR Cost report (employees × months), and "Show days
+  without work" on Daily HR Cost.
+
+One gap remains:
 
 - [ ] The row lock that serialises the 24 h check has no automated test: a
   deterministic test needs two concurrent database connections, which the
   Frappe test runner doesn't provide.
-
-### Step 2 — "Calculate monthly" (the assignment's wording)
-
-- [ ] A monthly view: a "Group by: Day / Week / Month" filter, or a "Monthly
-  HR Cost by Employee" report (employees × months).
-- [ ] Optionally show days without work as zero rows, so the chart's time axis
-  is honest.
 
 ### Step 3 — Roles and pay confidentiality
 
 - [ ] HR Manager (full) and HR User (enters work records) roles instead of
   System Manager only.
 - [ ] `hourly_rate` and `cost` at `permlevel` 1, readable only by HR Manager.
-- [ ] Make the report permission-aware before widening its roles
+- [ ] Make both reports permission-aware before widening their roles
   (`frappe.qb` bypasses user permissions), and test that other roles are
   refused.
 
 ### Step 4 — Polish
 
-- [ ] Report: aggregate the chart by month for ranges over ~2 months; drill
-  down from a day to its Work Records.
+- [ ] Daily report: drill down from a day to its Work Records.
 - [ ] `employee_name` on Work Record is copied at save time and goes stale
   when an Employee is renamed: drop it (links already show the current name)
   or refresh it on Employee save.

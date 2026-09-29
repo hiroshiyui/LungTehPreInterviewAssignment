@@ -76,7 +76,7 @@ reload the page.
   (`work_record.js`) only previews values.
 - A Work Record's rate is the one **valid on its date**, from the employee's
   Hourly Rate History (`get_hourly_rate` in `employee.py`), never the current
-  rate. The report sums the **stored** `cost`; history edits re-cost records
+  rate. The reports sum the **stored** `cost`; history edits re-cost records
   through `recalculate_work_records`.
 - Schema changes that affect existing data ship with a patch in
   `hr_cost/patches/` (listed in `patches.txt`), plus a test for it.
@@ -93,7 +93,8 @@ Where things are:
 | `apps/hr_cost/hr_cost/hr_cost/doctype/employee/` | Employee: rate history rules, rate lookup by date, re-costing + tests |
 | `apps/hr_cost/hr_cost/hr_cost/doctype/employee_hourly_rate/` | the Hourly Rate History rows (child DocType) |
 | `apps/hr_cost/hr_cost/hr_cost/doctype/work_record/` | Work Record: rate by date, cost, no future dates, 24 h cap, indexes |
-| `apps/hr_cost/hr_cost/hr_cost/report/daily_hr_cost/` | the Script Report (py + js filters) + tests |
+| `apps/hr_cost/hr_cost/hr_cost/report/daily_hr_cost/` | Daily HR Cost: the Script Report (py + js filters) + tests |
+| `apps/hr_cost/hr_cost/hr_cost/report/monthly_hr_cost/` | Monthly HR Cost: employees × months, same layout |
 | `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning; includes a raise) |
 | `apps/hr_cost/hr_cost/patches/` | data migrations run by `bench migrate` |
 | `apps/hr_cost/hr_cost/tests/` | shared test helpers; demo and patch tests |
