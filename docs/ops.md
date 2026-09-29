@@ -53,7 +53,7 @@ migrate`, so a plain restart also applies DocType JSON changes from the repo.
 | --- | --- | --- |
 | Database | MariaDB datadir inside the VM disk | volume `frappe-dev_db-data` → `/var/lib/mysql` |
 | Site directory: `site_config.json` (DB credentials, **encryption key**), uploaded files (`public/files`, `private/files`), site logs | `~/frappe-bench/sites/hrcost.localhost` in the VM | volume `frappe-dev_site-data` → `sites/hrcost.localhost` |
-| Background job queue | bench's local redis, in memory | volume `frappe-dev_queue-data` (redis-queue `/data`) |
+| Background job queue | bench's local redis, saved to `~/frappe-bench/config/pids/redis_queue.rdb` in the VM | volume `frappe-dev_queue-data` (redis-queue `/data`) |
 | Cache | bench's local redis, in memory | redis-cache, in memory only (deliberately not persisted) |
 | Code: frappe, the bench venv, built assets | VM disk | the `frappe` image (rebuilt, never persisted) |
 | The hr_cost app | this repo (shared folder) | this repo (bind mount) |

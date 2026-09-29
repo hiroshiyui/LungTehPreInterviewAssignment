@@ -31,6 +31,7 @@ When you solve a new problem, add a row here.
 | `bench init` is killed / out of memory | VM too small | `FRAPPE_VM_MEMORY=6144 vagrant reload --provision` |
 | Provisioning was interrupted during `bench init` | partial bench | re-run `vagrant provision`; the partial bench is removed automatically |
 | Site not reachable after `vagrant up` | the service failed | `vagrant ssh -c 'systemctl status frappe-bench'` |
+| Edits made on the host have no effect (Python or JS) | the VirtualBox shared folder doesn't deliver file-change notifications to the VM, so nothing reloads | `vagrant ssh -c 'sudo systemctl restart frappe-bench'`, or edit under `/vagrant` from inside the VM ([developer.md](developer.md#2-working-on-the-app)) |
 | Service stuck in "activating" after boot | it waits for the shared folder (`/vagrant/apps/hr_cost`) | check that `/vagrant` is mounted: `vagrant reload` |
 | VirtualBox won't start the VM on a very new Linux kernel | VirtualBox doesn't support the kernel yet | upgrade VirtualBox, or use the Podman solution |
 | `[WARNING]: Ansible is being run in a world writable directory` | the vboxsf share | harmless: the Vagrantfile passes `ansible.config_file` explicitly |
@@ -43,7 +44,6 @@ When you solve a new problem, add a row here.
 | Rebuilt image, but the old behaviour persists | podman-compose keeps running containers | `podman compose down && podman compose up -d --build` |
 | `Site hrcost.localhost already exists` | the site volume exists but `site_config.json` is missing | the playbook handles this (`--force`); if it persists, wipe both volumes together: `podman compose down -v` |
 | The site can't connect to its database | `site-data` and `db-data` got out of step (one wiped) | restore from a backup ([ops.md](ops.md#4-restore)), or `podman compose down -v` for a fresh start |
-| `exec: runuser: not found` | an image built before the PATH fix | rebuild: `podman compose down && podman compose up -d --build` |
 | Files written by the container are owned by a strange uid | `userns_mode: keep-id` unsupported (old podman, or docker-compose as the provider) | use podman 4+ with podman-compose |
 | `podman compose up --build` rebuilds from scratch after a small change | a change under `ansible/` invalidates the image layer that runs `bench init` | expected; it takes about 6–10 minutes |
 | Port 8000 is taken | another service, or the Vagrant VM is running | `FRAPPE_HOST_PORT=8080 podman compose up -d`, or stop the other one |

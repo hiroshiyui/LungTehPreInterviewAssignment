@@ -46,10 +46,23 @@ cd ~/frappe-bench
 | Apply DocType/Report JSON changes | `bench --site hrcost.localhost migrate` |
 | Load demo data (idempotent) | `bench --site hrcost.localhost execute hr_cost.demo.create_demo_data` |
 
-Edit files under `apps/hr_cost` **on the host**. The web server auto-reloads,
-and the asset watcher rebuilds JS. Background workers don't reload: restart
-the bench after Python changes (`sudo systemctl restart frappe-bench` in the
-VM, `podman compose restart frappe` in Podman).
+Edit files under `apps/hr_cost` **on the host**. How changes are picked up
+depends on the hosting solution:
+
+- **Podman**: the bind mount shares the host's file-change notifications, so
+  the web server auto-reloads Python and the asset watcher sees JS changes.
+- **VirtualBox**: the shared folder (vboxsf) does **not** pass host-side
+  file-change notifications into the VM, so neither the web server nor the
+  watcher notices an edit made on the host. After a change, restart the bench
+  (`vagrant ssh -c 'sudo systemctl restart frappe-bench'`). Alternatively, edit
+  the same files from inside the VM (`vagrant ssh`, under `/vagrant`), where
+  the notifications do fire.
+
+Either way, background workers never reload by themselves: restart the bench
+after Python changes (`sudo systemctl restart frappe-bench` in the VM,
+`podman compose restart frappe` in Podman). If a DocType or report change
+still doesn't show, run `bench --site hrcost.localhost clear-cache` and
+reload the page.
 
 ### Rules for the app code
 
