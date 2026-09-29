@@ -60,6 +60,28 @@ One gap remains:
 
 ### Step 4 — Polish
 
+Informative plots for HR. Each plot ships with a test of its data, and each is
+visible only to roles that may see pay (build charts and cards on the
+permission-aware report queries, or on Work Record, never on raw SQL):
+
+- [ ] Monthly HR Cost: stack each month's bar by employee, so the chart shows
+  who the cost goes to, not only the total.
+- [ ] Daily HR Cost: cost as bars with hours worked as a line on the same
+  axis (Frappe's `axis-mixed` chart), so an expensive day with few hours
+  stands out.
+- [ ] Cost share by employee for the selected range (a donut chart).
+- [ ] Effective hourly rate (total cost ÷ total hours) per month as a line,
+  which shows the effect of raises and of the staff mix.
+- [ ] Month-over-month change: this month's cost next to last month's, with the
+  difference in the report summary.
+- [ ] Rate history on the Employee form: a step line of `Valid From` →
+  `Hourly Rate` (pay data, so HR Manager only).
+- [ ] An "HR Cost" workspace with Number Cards (cost and hours this month,
+  change vs last month) and Dashboard Charts (the cost trend, cost by
+  employee), linking to both reports.
+
+Other polish:
+
 - [ ] Daily report: drill down from a day to its Work Records.
 - [ ] `employee_name` on Work Record is copied at save time and goes stale
   when an Employee is renamed: drop it (links already show the current name)
@@ -68,8 +90,8 @@ One gap remains:
   DocTypes; neither makes sense for them.
 - [ ] Duplicate employee names are indistinguishable in link dropdowns.
 - [ ] `allow_import` + quick entry for Work Record (bulk / fast logging).
-- [ ] Employee "Connections" to its Work Records; a workspace / dock entry for
-  the module.
+- [ ] Employee "Connections" to its Work Records; a dock entry for the
+  module (the workspace is covered by the plots above).
 - [ ] `pyproject.toml` still mentions `frappe~=16.0.0`.
 - [ ] Demo users (one HR Manager, one HR User) so learners can see the
   difference between the roles without creating users by hand.
