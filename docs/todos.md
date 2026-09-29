@@ -80,10 +80,6 @@ Remaining:
   deterministic test needs two concurrent database connections, which the
   Frappe test runner doesn't provide.
 
-## Docs
-
-- [ ] `CHANGELOG.md` and the first tagged release (`release-engineering` skill).
-
 ## Decided against
 
 - *Pinning Ubuntu's apt packages* (build tools, MariaDB in the VM, wkhtmltopdf,

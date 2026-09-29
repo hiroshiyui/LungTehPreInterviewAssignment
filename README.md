@@ -37,6 +37,7 @@ More documentation:
 - [docs/developer.md](docs/developer.md): working on the app and the provisioning, tests, and the gate.
 - [docs/troubleshooting.md](docs/troubleshooting.md): known problems and their fixes.
 - [docs/todos.md](docs/todos.md): known gaps and planned work.
+- [CHANGELOG.md](CHANGELOG.md): releases, and the exact pins each was built with.
 
 ---
 
