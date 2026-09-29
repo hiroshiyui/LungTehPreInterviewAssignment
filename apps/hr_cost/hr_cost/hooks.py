@@ -9,6 +9,11 @@ app_license = "mit"
 # bodies instead of form-encoded, per-key JSON-stringified values.
 use_json_request_body = True
 
+# The app's roles, exported to hr_cost/fixtures/ (`bench export-fixtures`) and
+# created on every site by install-app and migrate. HR Manager sees pay (rates
+# and costs, at permlevel 1); HR User enters work records without seeing it.
+fixtures = [{"dt": "Role", "filters": [["name", "in", ["HR Manager", "HR User"]]]}]
+
 # Apps
 # ------------------
 

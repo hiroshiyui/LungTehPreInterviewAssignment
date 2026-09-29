@@ -29,10 +29,32 @@ Business rules:
 * Work Record is indexed on `date` (the report) and on `(employee, date)`
   (the 24 h check).
 
+Roles and pay confidentiality:
+
+| Role | Employees | Work Records | Pay (rates, rate history, costs) | Reports |
+| --- | --- | --- | --- | --- |
+| **HR Manager** | create, edit, delete | create, edit, delete | read (and edit rates) | yes |
+| **HR User** | read (names only) | create, edit, delete | hidden | no |
+| **System Manager** | edit, delete | create, edit, delete | hidden | no |
+
+* Pay fields are at **permlevel 1**. Frappe hides them from users without
+  access to that level: in forms, lists, the REST API and the rate preview.
+  A value such a user submits for them is discarded; the server still costs
+  every record.
+* The reports honour **User Permissions**: an HR Manager restricted to some
+  employees sees only their costs.
+* A System Manager administers the site but doesn't see pay, so it can't
+  create employees either (a new employee needs a rate). Give a user the HR
+  Manager role to manage employees and rates (Administrator has every role).
+* The roles ship as fixtures (`hr_cost/fixtures/role.json`), created by
+  `install-app` and `migrate`.
+
 Upgrading an existing site: `bench migrate` runs the patch
 `hr_cost.patches.v0_1.seed_hourly_rate_history`, which gives each existing
 Employee a base rate equal to its current `Hourly Rate`. Existing Work
 Records keep their stored cost until that employee's history is edited.
+The same `migrate` adds the HR roles; System Manager users then lose access
+to pay and the reports until they're given the HR Manager role.
 
 Sample data: `bench --site <site> execute hr_cost.demo.create_demo_data`
 (idempotent).

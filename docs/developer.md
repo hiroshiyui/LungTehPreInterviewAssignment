@@ -76,6 +76,13 @@ reload the page.
   JSON, delete only the database row and run `bench migrate`.
 - In controllers, keep the `# begin/end: auto-generated types` block and
   `_DOCTYPE_NAME` untouched. Frappe rewrites them.
+- **Pay is permlevel 1** (rates, the rate history, costs), readable only by HR
+  Manager; HR User enters work records without seeing it. A report or endpoint
+  that returns pay must honour that: build report queries with
+  `frappe.qb.get_query(..., ignore_permissions=False)`, and check the permlevel
+  in whitelisted methods (`get_hourly_rate_on`). Plain `frappe.qb.from_()` and
+  `frappe.get_all` skip every permission check. When you add a permission row,
+  set every right explicitly: DocPerm defaults most of them to 1.
 - Business rules live on the **server** (`validate()`). The client script
   (`work_record.js`) only previews values.
 - A Work Record's rate is the one **valid on its date**, from the employee's
@@ -101,7 +108,8 @@ Where things are:
 | `apps/hr_cost/hr_cost/hr_cost/report/monthly_hr_cost/` | Monthly HR Cost: employees × months, same layout |
 | `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning; includes a raise) |
 | `apps/hr_cost/hr_cost/patches/` | data migrations run by `bench migrate` |
-| `apps/hr_cost/hr_cost/tests/` | shared test helpers; demo and patch tests |
+| `apps/hr_cost/hr_cost/fixtures/role.json` | the HR Manager and HR User roles (`bench export-fixtures`) |
+| `apps/hr_cost/hr_cost/tests/` | shared test helpers; demo, patch and permission tests |
 
 ## 3. Working on the provisioning
 

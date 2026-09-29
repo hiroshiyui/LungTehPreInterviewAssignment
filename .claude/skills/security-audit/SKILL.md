@@ -106,16 +106,27 @@ This skill covers security only. For correctness, tests and docs, use `code-revi
 
 ## Step 6 — The hr_cost app (A01, A03, A04)
 
-- **Permissions**: the DocTypes grant only `System Manager`, and the report's `roles` too.
-  A new DocType or report without explicit roles, or with `Guest` / `All`, is a finding.
-- **Report queries**: `frappe.qb` **bypasses user permissions and `permlevel`**. That's
-  acceptable only while the report is System-Manager-only. If roles widen, switch to
-  permission-aware `frappe.get_list` or add explicit permission filtering.
+- **Permissions and pay confidentiality**: the roles are `HR Manager` (everything,
+  including pay) and `HR User` (enters work records), shipped as fixtures
+  (`hr_cost/fixtures/role.json`). Pay (`hourly_rate`, the rate history, `cost`) sits at
+  **permlevel 1**, which only HR Manager can read; `System Manager` keeps permlevel 0
+  only. Both reports' `roles` are `HR Manager` only. Findings:
+  - a new DocType or report without explicit roles, or with `Guest` / `All`;
+  - a pay field left at permlevel 0, or a permlevel 1 row for any role but HR Manager;
+  - a DocPerm row with rights it wasn't meant to have. DocPerm defaults most rights
+    to 1, so every right must be set explicitly (check the JSON, not just the intent).
+- **Queries that return pay**: the reports use `frappe.qb.get_query(...,
+  ignore_permissions=False)`, which applies roles, User Permissions and permlevels.
+  Plain `frappe.qb.from_()` and `frappe.get_all` **bypass all three**: they're fine
+  inside a controller (for example, costing a record), but a finding wherever results
+  reach a user who may not see pay.
 - **Injection**: all SQL goes through `frappe.qb` or parameterized `frappe.db` calls, never
   f-strings, `%` formatting or `frappe.db.sql` with interpolated user input. Filter values
   are normalized (`getdate`) before use.
 - **Whitelisting**: any `@frappe.whitelist()` method checks permissions itself
-  (`frappe.has_permission` / `doc.check_permission`). `allow_guest=True` needs a written
+  (`frappe.has_permission` / `doc.check_permission`), **and the permlevel of what it
+  returns**: `get_hourly_rate_on` returns a rate, so it also requires permlevel 1 read on
+  Employee. `allow_guest=True` needs a written
   justification. `demo.create_demo_data` is **not** whitelisted: it runs only via
   `bench execute` and must stay that way.
 - **Server-side authority**: cost and hour limits are enforced in `validate()`. The

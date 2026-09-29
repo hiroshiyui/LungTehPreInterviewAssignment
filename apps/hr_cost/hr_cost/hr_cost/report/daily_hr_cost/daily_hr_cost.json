@@ -12,7 +12,7 @@
  "generate_csv": 0,
  "idx": 0,
  "is_standard": "Yes",
- "modified": "2026-09-29 08:41:32.075154",
+ "modified": "2026-09-29 11:00:55.571918",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Daily HR Cost",
@@ -23,7 +23,7 @@
  "report_type": "Script Report",
  "roles": [
   {
-   "role": "System Manager"
+   "role": "HR Manager"
   }
  ],
  "snapshot_report": 0,

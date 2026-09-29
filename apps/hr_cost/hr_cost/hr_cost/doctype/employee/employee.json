@@ -30,26 +30,29 @@
    "in_list_view": 1,
    "label": "Hourly Rate",
    "non_negative": 1,
+   "permlevel": 1,
    "read_only_depends_on": "eval:!doc.__islocal",
    "reqd": 1
   },
   {
    "fieldname": "section_break_rates",
    "fieldtype": "Section Break",
-   "label": "Hourly Rate History"
+   "label": "Hourly Rate History",
+   "permlevel": 1
   },
   {
    "description": "Each Work Record is costed at the rate valid on its date.",
    "fieldname": "hourly_rates",
    "fieldtype": "Table",
    "label": "Hourly Rate History",
-   "options": "Employee Hourly Rate"
+   "options": "Employee Hourly Rate",
+   "permlevel": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 10:24:23.099844",
+ "modified": "2026-09-29 11:05:23.612088",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Employee",
@@ -57,7 +60,6 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
@@ -67,6 +69,28 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "HR Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "HR User"
   }
  ],
  "row_format": "Dynamic",

@@ -3,9 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder.functions import Extract, Sum
 from frappe.utils import add_months, flt, get_first_day, getdate
-from pypika.enums import DatePart
 
 
 def execute(filters: dict | None = None):
@@ -55,31 +53,30 @@ def get_columns(months: list) -> list[dict]:
 
 def get_data(filters: frappe._dict, months: list) -> list[dict]:
 	"""One query, grouped by employee and calendar month, over the stored cost
-	(each Work Record is already costed at the rate valid on its date)."""
-	wr = frappe.qb.DocType("Work Record")
-	emp = frappe.qb.DocType("Employee")
-	year, month = Extract(DatePart.year, wr.date), Extract(DatePart.month, wr.date)
-	query = (
-		frappe.qb.from_(wr)
-		.join(emp)
-		.on(emp.name == wr.employee)
-		.select(
-			wr.employee,
-			emp.employee_name,  # the current name, not the copy saved on each record
-			year.as_("year"),
-			month.as_("month"),
-			Sum(wr.hours_worked).as_("hours_worked"),
-			Sum(wr.cost).as_("hr_cost"),
-		)
-		.where(wr.date[getdate(filters.from_date) : getdate(filters.to_date)])
-		.groupby(wr.employee, emp.employee_name, year, month)
-		.orderby(emp.employee_name)
-		.orderby(wr.employee)
-	)
-	if filters.employee:
-		query = query.where(wr.employee == filters.employee)
+	(each Work Record is already costed at the rate valid on its date).
 
-	rows = {}  # employee -> report row, in query order
+	Like the daily report, the query runs with `ignore_permissions=False`, so
+	it honours the user's role, User Permissions and field permlevels."""
+	query_filters = {"date": ["between", [getdate(filters.from_date), getdate(filters.to_date)]]}
+	if filters.employee:
+		query_filters["employee"] = filters.employee
+
+	query = frappe.qb.get_query(
+		"Work Record",
+		fields=[
+			"employee",
+			"employee.employee_name",  # the current name, joined from Employee
+			{"YEAR": "date", "as": "year"},
+			{"MONTH": "date", "as": "month"},
+			{"SUM": "hours_worked", "as": "hours_worked"},
+			{"SUM": "cost", "as": "hr_cost"},
+		],
+		filters=query_filters,
+		group_by="employee, year, month",
+		ignore_permissions=False,
+	)
+
+	rows = {}  # employee -> report row
 	for r in query.run(as_dict=True):
 		row = rows.setdefault(
 			r.employee,
@@ -94,7 +91,8 @@ def get_data(filters: frappe._dict, months: list) -> list[dict]:
 		row[month_field(getdate(f"{r.year}-{r.month:02d}-01"))] = flt(r.hr_cost)
 		row.hours_worked += flt(r.hours_worked)
 		row.hr_cost += flt(r.hr_cost)
-	return list(rows.values())
+	# By name, then ID, so namesakes stay apart and in a stable order.
+	return sorted(rows.values(), key=lambda row: (row.employee_name or "", row.employee))
 
 
 def get_chart(data: list[dict], months: list) -> dict | None:

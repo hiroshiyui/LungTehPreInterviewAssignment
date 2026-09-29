@@ -16,6 +16,9 @@ frappe.ui.form.on("Work Record", {
 	},
 
 	async fetch_hourly_rate(frm) {
+		// Rate and cost are pay data (permlevel 1): users who can't see them get
+		// no preview, and the server still costs the record on save.
+		if (!frm.perm[1]?.read) return;
 		if (!frm.doc.employee || !frm.doc.date) {
 			// No employee or date, no rate: don't leave a stale preview.
 			await frm.set_value({ hourly_rate: 0, cost: 0 });
@@ -31,6 +34,7 @@ frappe.ui.form.on("Work Record", {
 	},
 
 	calculate_cost(frm) {
+		if (!frm.perm[1]?.read) return;
 		frm.set_value("cost", flt(frm.doc.hours_worked) * flt(frm.doc.hourly_rate));
 	},
 });

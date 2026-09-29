@@ -41,29 +41,22 @@ move it to "Decided against" with the reason.
 From the app review of 2026-09-29. Work through the steps in order; each
 item ships with its tests.
 
-### Steps 1 and 2 — Correctness, and "calculate monthly"
+### Steps 1–3 — Correctness, "calculate monthly", and pay confidentiality
 
 Done:
 - step 1: rates by work date (Hourly Rate History), re-costing on
   corrections, no future dates, the Employee row lock, `date` and
   `(employee, date)` indexes, and the missing tests;
 - step 2: the Monthly HR Cost report (employees × months), and "Show days
-  without work" on Daily HR Cost.
+  without work" on Daily HR Cost;
+- step 3: HR Manager and HR User roles, pay at permlevel 1, permission-aware
+  reports (roles, User Permissions, permlevels), and tests for each role.
 
 One gap remains:
 
 - [ ] The row lock that serialises the 24 h check has no automated test: a
   deterministic test needs two concurrent database connections, which the
   Frappe test runner doesn't provide.
-
-### Step 3 — Roles and pay confidentiality
-
-- [ ] HR Manager (full) and HR User (enters work records) roles instead of
-  System Manager only.
-- [ ] `hourly_rate` and `cost` at `permlevel` 1, readable only by HR Manager.
-- [ ] Make both reports permission-aware before widening their roles
-  (`frappe.qb` bypasses user permissions), and test that other roles are
-  refused.
 
 ### Step 4 — Polish
 
@@ -78,6 +71,8 @@ One gap remains:
 - [ ] Employee "Connections" to its Work Records; a workspace / dock entry for
   the module.
 - [ ] `pyproject.toml` still mentions `frappe~=16.0.0`.
+- [ ] Demo users (one HR Manager, one HR User) so learners can see the
+  difference between the roles without creating users by hand.
 
 ## Docs
 

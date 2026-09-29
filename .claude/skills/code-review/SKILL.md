@@ -123,9 +123,13 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
   order) is a finding: make the change through the Desk or the API instead.
 - Client script (`work_record.js`) only *previews* the cost; the server is authoritative.
   Flag any logic that exists only client-side.
-- Queries use `frappe.qb` or parameterized `frappe.db` calls. Note that `frappe.qb` bypasses
-  user permissions, which is acceptable only because the report is restricted to System
-  Manager.
+- Queries use `frappe.qb` or parameterized `frappe.db` calls. Report queries use
+  `frappe.qb.get_query(..., ignore_permissions=False)` so roles, User Permissions and
+  permlevels apply; a report built on plain `frappe.qb.from_()` leaks pay to anyone who
+  can open it.
+- Pay (rates, rate history, cost) is permlevel 1, readable only by HR Manager. Anything
+  new that shows a rate or cost (a field, an endpoint, a report column) respects that,
+  and `tests/test_permissions.py` covers it.
 - `demo.py` stays idempotent: a second call creates nothing and returns `{"created": 0}`.
   The Ansible `changed_when` depends on that exact output.
 

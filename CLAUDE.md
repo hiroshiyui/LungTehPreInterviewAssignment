@@ -89,7 +89,8 @@ Backups: `scripts/backup.sh [--target compose|vm] [--dry-run]` and `scripts/rest
   - the `(employee, date)` index comes from `on_doctype_update` in `work_record.py` (Frappe JSON only declares single-column indexes);
   - `cost = hours × rate`;
   - at most 24 h per employee per date.
-- The reports (`report/daily_hr_cost/`, `report/monthly_hr_cost/`) are `frappe.qb` GROUP BYs over the **stored** `cost` (by date; by employee and month). `frappe.qb` bypasses user permissions, which is acceptable only while the reports are System-Manager-only.
+- The reports (`report/daily_hr_cost/`, `report/monthly_hr_cost/`) are GROUP BYs over the **stored** `cost` (by date; by employee and month), built with `frappe.qb.get_query(..., ignore_permissions=False)` so roles, User Permissions and permlevels apply. Plain `frappe.qb.from_()` / `frappe.get_all` bypass all three.
+- Roles (fixtures in `hr_cost/fixtures/role.json`): **HR Manager** sees everything; **HR User** enters Work Records and sees employees, but not pay. Pay (`hourly_rate`, the rate history, `cost`) is **permlevel 1**, HR Manager only; System Manager has permlevel 0 only, and the reports are HR-Manager-only. DocPerm defaults most rights to 1, so set every right explicitly when adding a permission row. `tests/test_permissions.py` covers all of it.
 - Tests use `IntegrationTestCase`, roll back in `tearDown`, and use 2001 dates to avoid the demo data. Helpers are in `hr_cost/tests/utils.py`.
 - `demo.create_demo_data` must stay idempotent. Provisioning's `changed_when` matches its `{"created": 0}` output.
 - Frappe 17 serves the desk at `/desk/...`; `/app/...` redirects there.

@@ -60,18 +60,21 @@
   {
    "fieldname": "section_break_cost",
    "fieldtype": "Section Break",
-   "label": "Cost"
+   "label": "Cost",
+   "permlevel": 1
   },
   {
    "description": "The employee's rate valid on this record's date (from the Employee's Hourly Rate History).",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "label": "Hourly Rate",
+   "permlevel": 1,
    "read_only": 1
   },
   {
    "fieldname": "column_break_cost",
-   "fieldtype": "Column Break"
+   "fieldtype": "Column Break",
+   "permlevel": 1
   },
   {
    "description": "Hours Worked \u00d7 Hourly Rate",
@@ -79,13 +82,14 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Cost",
+   "permlevel": 1,
    "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 10:24:23.193004",
+ "modified": "2026-09-29 11:03:21.859107",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Work Record",
@@ -102,6 +106,30 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "HR Manager"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "HR User",
    "write": 1
   }
  ],

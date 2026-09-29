@@ -23,3 +23,13 @@ def make_work_record(employee: str, date: str, hours_worked: float):
 	return frappe.get_doc(
 		{"doctype": "Work Record", "employee": employee, "date": date, "hours_worked": hours_worked}
 	).insert()
+
+
+def make_user(email: str, *roles: str) -> str:
+	"""A desk user with exactly `roles`. Tests roll it back in tearDown; clear
+	its cached roles and User Permissions there too (`frappe.clear_cache`)."""
+	user = frappe.get_doc(
+		{"doctype": "User", "email": email, "first_name": email.split("@")[0], "send_welcome_email": 0}
+	).insert(ignore_permissions=True)
+	user.add_roles(*roles)
+	return email

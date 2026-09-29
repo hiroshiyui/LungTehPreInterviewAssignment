@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder.functions import Count, Sum
+from frappe.query_builder.functions import Count
 from frappe.utils import add_days, flt, formatdate, getdate
 
 
@@ -35,22 +35,32 @@ def get_columns() -> list[dict]:
 
 
 def get_data(filters: frappe._dict) -> list[dict]:
-	wr = frappe.qb.DocType("Work Record")
-	query = (
-		frappe.qb.from_(wr)
-		.select(
-			wr.date,
-			Count(wr.employee).distinct().as_("employees"),
-			Sum(wr.hours_worked).as_("hours_worked"),
-			Sum(wr.cost).as_("hr_cost"),
-		)
-		.where(wr.date[getdate(filters.from_date) : getdate(filters.to_date)])
-		.groupby(wr.date)
-		.orderby(wr.date)
-	)
-	if filters.employee:
-		query = query.where(wr.employee == filters.employee)
+	"""Sum the stored cost per date, as the current user is allowed to see it.
 
+	`ignore_permissions=False` makes Frappe check the user's role, apply their
+	User Permissions (for example, only some employees), and refuse `cost` to a
+	user without access to its permlevel. Plain `frappe.qb.from_()` does none
+	of that."""
+	query_filters = {"date": ["between", [getdate(filters.from_date), getdate(filters.to_date)]]}
+	if filters.employee:
+		query_filters["employee"] = filters.employee
+
+	query = frappe.qb.get_query(
+		"Work Record",
+		fields=[
+			"date",
+			{"SUM": "hours_worked", "as": "hours_worked"},
+			{"SUM": "cost", "as": "hr_cost"},
+		],
+		filters=query_filters,
+		group_by="date",
+		order_by="date asc",
+		ignore_permissions=False,
+	)
+	# The field syntax has no COUNT(DISTINCT ...), so add it to the checked
+	# query; `employee` is a permlevel 0 field every reader of the report sees.
+	wr = frappe.qb.DocType("Work Record")
+	query = query.select(Count(wr.employee).distinct().as_("employees"))
 	return query.run(as_dict=True)
 
 

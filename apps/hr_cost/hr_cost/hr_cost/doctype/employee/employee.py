@@ -110,8 +110,12 @@ def get_hourly_rate(employee: str, on) -> float | None:
 
 @frappe.whitelist()
 def get_hourly_rate_on(employee: str, date: str) -> float | None:
-	"""For the Work Record form's cost preview."""
+	"""For the Work Record form's cost preview. Rates are pay data (permlevel 1
+	on Employee), so reading the employee isn't enough: an HR User, who sees
+	employees but not their pay, is refused."""
 	frappe.has_permission("Employee", "read", employee, throw=True)
+	if 1 not in frappe.get_meta("Employee").get_permlevel_access("read"):
+		frappe.throw(_("Not permitted to see hourly rates."), frappe.PermissionError)
 	return get_hourly_rate(employee, date)
 
 
