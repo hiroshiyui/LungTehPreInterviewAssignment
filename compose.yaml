@@ -3,17 +3,21 @@
 #   podman compose up -d --build     # first build ~10 min (bench init)
 #   → http://localhost:8000  (Administrator / admin)
 #
-# Storage: all state lives in two named volumes, so containers can be
+# Storage: all state lives in three named volumes, so containers can be
 # recreated (or the image rebuilt) without losing anything:
-#   db-data    MariaDB datadir (the site's database)
-#   site-data  sites/<site>: site_config.json, uploaded public/private files,
-#              backups
-# `podman compose down` keeps them; `podman compose down -v` wipes them.
-# Both must always be kept or wiped *together*.
+#   db-data     MariaDB datadir (the site's database)
+#   site-data   sites/<site>: site_config.json (DB credentials, encryption
+#               key), uploaded public/private files
+#   queue-data  the redis job queue
+# Backups (scripts/backup.sh) go to ./backups on the host, outside the volumes.
+# `podman compose down` keeps the volumes; `podman compose down -v` wipes them.
+# db-data and site-data must always be kept or wiped *together*.
 name: frappe-dev
 
 x-env: &env
-  SITE_NAME: hrcost.localhost          # also the site-data mount path below
+  # Same default as site_name in ansible/group_vars/all.yml; also used for the
+  # site-data mount path below.
+  SITE_NAME: ${SITE_NAME:-hrcost.localhost}
   DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-frappe}   # development only; ports bind to 127.0.0.1
   ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
 
@@ -38,6 +42,9 @@ services:
   redis-cache:
     image: docker.io/library/redis:7.2-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]   # a cache: no persistence
+    # The redis image declares a /data volume; without this, every recreated
+    # container would leave an orphaned anonymous volume behind.
+    tmpfs: [/data]
     restart: unless-stopped
 
   redis-queue:
@@ -62,7 +69,7 @@ services:
     user: root                         # the entrypoint drops to `frappe`
     volumes:
       - .:/workspace                   # repo: the app is symlinked from here
-      - site-data:/home/frappe/frappe-bench/sites/hrcost.localhost
+      - site-data:/home/frappe/frappe-bench/sites/${SITE_NAME:-hrcost.localhost}
     ports:
       - "127.0.0.1:${FRAPPE_HOST_PORT:-8000}:8000"   # web
       # realtime: browsers expect 9000 (socketio_port); override only for tests
