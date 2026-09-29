@@ -107,11 +107,21 @@
           ansible.builtin.fail:
             msg: "bench init failed; see the output above. The partial bench was removed, re-run provisioning."
 
-    - name: Point frappe's upstream remote at GitHub (so `bench update` works)
+    # bench cloned frappe from the local pinned repo; point `upstream` back at
+    # GitHub so `bench update` works later.
+    - name: Read frappe's upstream remote
+      ansible.builtin.command:
+        argv: [git, remote, get-url, upstream]
+        chdir: "{{ bench_path }}/apps/frappe"
+      register: bench_frappe_upstream
+      changed_when: false
+
+    - name: Point frappe's upstream remote at GitHub
       ansible.builtin.command:
         argv: [git, remote, set-url, upstream, "{{ frappe_repo }}"]
         chdir: "{{ bench_path }}/apps/frappe"
-      changed_when: false
+      when: bench_frappe_upstream.stdout != frappe_repo
+      changed_when: true
 
 # --- compose variant: use the redis services instead of local redis --------
 - name: Point the bench at external services

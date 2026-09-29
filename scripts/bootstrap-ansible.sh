@@ -18,8 +18,9 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q --no-install-recommends python3-venv python3-apt
 
+# The venv's bundled pip is fixed by the distro's Python package; upgrading it
+# would pull whatever pip is newest and make the build float.
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install --quiet --upgrade pip
 "$VENV/bin/pip" install --quiet -r "$REQUIREMENTS"
 
 for bin in ansible ansible-playbook ansible-galaxy; do

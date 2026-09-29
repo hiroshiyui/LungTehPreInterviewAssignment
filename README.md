@@ -356,7 +356,8 @@ DB_ROOT_PASSWORD=… ADMIN_PASSWORD=… podman compose up -d      # other dev pa
    - `common_site_config.json` points at `redis://redis-cache:6379` and
      `redis://redis-queue:6379`;
    - the Procfile has no redis processes;
-   - there's no systemd, so there's no redis service to disable and no sysctl.
+   - no `redis-server` package (redis runs as its own services), and no
+     systemd or sysctl changes (containers have no systemd and share the host kernel).
 2. **Every container start** (`compose/entrypoint.sh`):
    1. wait until MariaDB answers;
    2. run the `site` and `app` roles. The first start creates the site with

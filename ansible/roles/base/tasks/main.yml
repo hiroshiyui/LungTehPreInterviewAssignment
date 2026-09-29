@@ -16,18 +16,24 @@
       - mariadb-client
       - pkg-config
       - python3-debian
-      - redis-server
       - rsync
       - xz-utils
     state: present
     update_cache: true
     cache_valid_time: 3600
 
-# bench runs its own redis-cache / redis-queue processes from the Procfile,
-# the distro instance is not needed.
-- name: VM-only system settings (containers share the host kernel and have no systemd)
+# Containers use the redis-cache / redis-queue compose services instead, share
+# the host kernel (no sysctl) and have no systemd.
+- name: VM-only packages and system settings
   when: deploy_target == 'vm'
   block:
+    # bench runs its own redis-cache / redis-queue processes from the Procfile;
+    # it needs the redis-server binary, but not the distro's service.
+    - name: Install redis-server
+      ansible.builtin.apt:
+        name: redis-server
+        state: present
+
     - name: Disable the system redis-server service
       ansible.builtin.systemd_service:
         name: redis-server
