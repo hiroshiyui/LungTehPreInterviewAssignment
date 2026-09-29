@@ -70,6 +70,10 @@ reload the page.
   mode, or `frappe.get_doc({"doctype": "DocType", …}).insert()`), never by
   hand-writing JSON. Frappe exports the JSON into the repo. The same goes for
   changing fields.
+- The reverse holds too: in developer mode, **deleting** a standard DocType or
+  Report (Desk or `frappe.delete_doc`) deletes its folder from the repo, code
+  and tests included. Commit before you experiment, and to re-sync one from its
+  JSON, delete only the database row and run `bench migrate`.
 - In controllers, keep the `# begin/end: auto-generated types` block and
   `_DOCTYPE_NAME` untouched. Frappe rewrites them.
 - Business rules live on the **server** (`validate()`). The client script
