@@ -12,7 +12,8 @@ TARGET=compose
 FROM=""
 YES=0
 DRY_RUN=0
-SITE=${SITE_NAME:-hrcost.localhost}
+# The site name has one home: ansible/group_vars/all.yml (SITE_NAME overrides).
+SITE=${SITE_NAME:-$(sed -n 's/^site_name: *//p' ansible/group_vars/all.yml)}
 DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-frappe}
 
 while [[ $# -gt 0 ]]; do
@@ -51,16 +52,20 @@ case "$TARGET" in
   *) echo "--target must be compose or vm" >&2; exit 2 ;;
 esac
 DIR="$ROOT/$FROM"
-BENCH=(bench --site "$SITE")
-RESTORE=("${BENCH[@]}" restore "$DIR/$DB"
+RESTORE_ARGS=(--site "$SITE" restore "$DIR/$DB"
   --with-public-files "$DIR/$PUBLIC" --with-private-files "$DIR/$PRIVATE"
   --db-root-username root --db-root-password "$DB_ROOT_PASSWORD" --non-interactive)
+MIGRATE_ARGS=(--site "$SITE" migrate)
 
 if [[ "$TARGET" == compose ]]; then
-  PC=(podman compose ${COMPOSE_PROJECT:+-p "$COMPOSE_PROJECT"} exec -u frappe frappe)
-  run "${PC[@]}" "${RESTORE[@]}"
-  run "${PC[@]}" "${BENCH[@]}" migrate
+  PC=(podman compose ${COMPOSE_PROJECT:+-p "$COMPOSE_PROJECT"} exec -u frappe frappe bench)
+  run "${PC[@]}" "${RESTORE_ARGS[@]}"
+  run "${PC[@]}" "${MIGRATE_ARGS[@]}"
 else
-  run vagrant ssh -c "cd ~/frappe-bench && ${RESTORE[*]} && ${BENCH[*]} migrate"
+  # The command crosses a remote shell: quote every argument (%q), and call
+  # bench by path rather than relying on the login shell's PATH.
+  printf -v R ' %q' "${RESTORE_ARGS[@]}"
+  printf -v M ' %q' "${MIGRATE_ARGS[@]}"
+  run vagrant ssh -c "cd ~/frappe-bench && ~/.local/bin/bench$R && ~/.local/bin/bench$M"
 fi
 (( DRY_RUN )) && echo "[dry-run] nothing was changed" || echo "Restored $SITE from $FROM"

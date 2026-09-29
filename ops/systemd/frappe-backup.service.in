@@ -2,11 +2,12 @@
 # A systemd *user* unit: runs as you, where podman/vagrant already work.
 [Unit]
 Description=Back up the Frappe dev site (database + files) to @REPO_DIR@/backups
-Documentation=file://@REPO_DIR@/docs/ops.md
+Documentation=https://github.com/hiroshiyui/LungTehPreInterviewAssignment/blob/main/docs/ops.md
 
 [Service]
 Type=oneshot
 WorkingDirectory=@REPO_DIR@
 # User units get a minimal PATH; podman-compose is usually in ~/.local/bin.
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=@REPO_DIR@/scripts/backup.sh --target @TARGET@ --keep 14
+# Quoted, so a repository path with spaces still works.
+ExecStart="@REPO_DIR@/scripts/backup.sh" --target @TARGET@ --keep 14

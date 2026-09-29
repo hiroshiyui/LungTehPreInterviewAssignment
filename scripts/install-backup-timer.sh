@@ -25,8 +25,12 @@ REPO_DIR=$(pwd)
 RENDER_DIR=$(mktemp -d)
 trap 'rm -rf "$RENDER_DIR"' EXIT
 
+# Escape the path twice: systemd treats "%" as a specifier (so "%" -> "%%"),
+# and sed treats "\", "&" and the "#" delimiter specially in a replacement.
+UNIT_REPO_DIR=${REPO_DIR//%/%%}
+SED_REPO_DIR=$(printf '%s' "$UNIT_REPO_DIR" | sed 's/[\\&#]/\\&/g')
 for unit in frappe-backup.service frappe-backup.timer; do
-  sed -e "s#@REPO_DIR@#$REPO_DIR#g" -e "s#@TARGET@#$TARGET#g" \
+  sed -e "s#@REPO_DIR@#$SED_REPO_DIR#g" -e "s#@TARGET@#$TARGET#g" \
     "ops/systemd/$unit.in" > "$RENDER_DIR/$unit"
 done
 

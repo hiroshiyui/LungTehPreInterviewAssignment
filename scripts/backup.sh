@@ -19,7 +19,8 @@ cd "$(dirname "$0")/.."
 TARGET=compose
 KEEP=14
 DRY_RUN=0
-SITE=${SITE_NAME:-hrcost.localhost}
+# The site name has one home: ansible/group_vars/all.yml (SITE_NAME overrides).
+SITE=${SITE_NAME:-$(sed -n 's/^site_name: *//p' ansible/group_vars/all.yml)}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,7 +45,10 @@ case "$TARGET" in
     run podman compose ${COMPOSE_PROJECT:+-p "$COMPOSE_PROJECT"} exec -u frappe frappe bench "${BENCH_ARGS[@]}" "/workspace/backups/$STAMP"
     ;;
   vm)
-    run vagrant ssh -c "cd ~/frappe-bench && bench ${BENCH_ARGS[*]} /vagrant/backups/$STAMP"
+    # The command crosses a remote shell: quote every argument (%q), and call
+    # bench by path rather than relying on the login shell's PATH.
+    printf -v REMOTE_ARGS ' %q' "${BENCH_ARGS[@]}" "/vagrant/backups/$STAMP"
+    run vagrant ssh -c "cd ~/frappe-bench && ~/.local/bin/bench$REMOTE_ARGS"
     ;;
   *) echo "--target must be compose or vm" >&2; exit 2 ;;
 esac
