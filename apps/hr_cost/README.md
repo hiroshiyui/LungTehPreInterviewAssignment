@@ -5,10 +5,11 @@ cost per day and per month.
 
 | DocType / Report | Purpose |
 | --- | --- |
-| **Employee** | `Employee Name`, `Hourly Rate` (must be > 0), and an **Hourly Rate History** table (child DocType *Employee Hourly Rate*: `Valid From`, `Hourly Rate`). Named `EMP-00001`, … and shown by name in links. |
+| **Employee** | `Employee Name`, `Hourly Rate` (must be > 0), and an **Hourly Rate History** table (child DocType *Employee Hourly Rate*: `Valid From`, `Hourly Rate`), plotted as a line under the table. Named `EMP-00001`, … and shown by name in links. |
 | **Work Record** | `Employee` (link) + fetched `Employee Name`, `Date`, `Hours Worked`. On save it takes the rate **valid on its date** from the history and stores `Cost = Hours Worked × Hourly Rate`. |
-| **Daily HR Cost** (Script Report) | One row per day: number of employees, hours worked, total HR cost. Filters: date range (defaults to the current month) and an optional employee. Also shows a bar chart and period totals (total cost, total hours, days with work, average cost per day). "Show days without work" adds zero rows for the chart's time axis. |
-| **Monthly HR Cost** (Script Report) | One row per employee, one column per month in the range (months without work show 0), plus the employee's total hours and cost, and a total row. Filters: date range (defaults to the current year) and an optional employee. Also shows a bar chart per month and totals (total cost, total hours, employees, average cost per month with work). |
+| **Daily HR Cost** (Script Report) | One row per day: number of employees, hours worked, total HR cost. Filters: date range (defaults to the current month) and an optional employee. Period totals: total cost, total hours, days with work, average cost per day. The "Chart" filter picks HR Cost, Hours Worked or Employees at Work per day. "Show days without work" adds zero rows for the chart's time axis. |
+| **Monthly HR Cost** (Script Report) | One row per employee, one column per month in the range (months without work show 0), plus the employee's total hours and cost, and a total row. Filters: date range (defaults to the current year) and an optional employee. Totals: total cost, total hours, employees, average cost per month with work, and the latest month with work against the month before it (red when cost rose). The "Chart" filter picks Cost by Employee (stacked bars per month), Cost Share (donut) or Effective Hourly Rate (cost ÷ hours per month; it moves with raises and with who did the work). |
+| **HR Cost** (Workspace) | `/desk/hr-cost`, HR Manager only. Number cards: HR cost this month, hours worked this month, HR cost this year. Charts: cost by employee, daily cost this month, cost share, effective hourly rate. Every card and chart reads one of the two reports (Report-type Number Cards and Dashboard Charts), so it inherits their permission checks. |
 
 Business rules:
 

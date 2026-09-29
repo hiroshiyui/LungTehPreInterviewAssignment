@@ -89,3 +89,22 @@ class IntegrationTestPermissions(IntegrationTestCase):
 			_columns, monthly, *_rest = monthly_hr_cost.execute(RANGE)
 		self.assertEqual([(row.hr_cost, row.employees) for row in daily], [(800, 1)])
 		self.assertEqual([row.employee for row in monthly], [self.bob])
+
+	def test_workspace_plots_go_through_the_reports(self):
+		# Every chart and card reads one of the permission-aware reports, so it
+		# inherits their roles and checks; none queries Work Record directly.
+		reports = set(REPORTS)
+		charts = frappe.get_all("Dashboard Chart", {"module": "HR Cost"}, ["name", "chart_type", "report_name"])
+		cards = frappe.get_all("Number Card", {"module": "HR Cost"}, ["name", "type", "report_name"])
+		self.assertTrue(charts and cards)
+		for chart in charts:
+			self.assertEqual((chart.chart_type, chart.report_name in reports), ("Report", True), chart.name)
+			roles = frappe.get_all("Has Role", {"parenttype": "Dashboard Chart", "parent": chart.name}, pluck="role")
+			self.assertEqual(roles, ["HR Manager"], chart.name)
+		for card in cards:
+			self.assertEqual((card.type, card.report_name in reports), ("Report", True), card.name)
+
+		workspace = frappe.get_doc("Workspace", "HR Cost")
+		self.assertEqual([r.role for r in workspace.roles], ["HR Manager"])
+		self.assertEqual({c.chart_name for c in workspace.charts}, {c.name for c in charts})
+		self.assertEqual({c.number_card_name for c in workspace.number_cards}, {c.name for c in cards})

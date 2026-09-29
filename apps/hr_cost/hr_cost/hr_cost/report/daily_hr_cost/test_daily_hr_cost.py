@@ -61,3 +61,21 @@ class IntegrationTestDailyHRCost(IntegrationTestCase):
 		self.assertEqual(chart["data"]["datasets"][0]["values"], [1600, 200, 0, 0])
 		self.assertEqual(summary["Days With Work"], 2)  # zero rows don't count
 		self.assertEqual(summary["Average HR Cost / Day"], 900)
+
+	def test_chart_picker(self):
+		expected = {
+			"HR Cost": ("bar", [1600, 200]),
+			"Hours Worked": ("bar", [12, 2]),
+			"Employees at Work": ("line", [2, 1]),
+		}
+		for name, (chart_type, values) in expected.items():
+			with self.subTest(chart=name):
+				_data, chart, _summary = self.run_report(chart=name)
+				self.assertEqual((chart["type"], chart["data"]["datasets"][0]["values"]), (chart_type, values))
+		self.assertRaises(frappe.ValidationError, self.run_report, chart="Pie In The Sky")
+
+	def test_chart_labels_are_short(self):
+		_data, chart, _summary = self.run_report()
+		self.assertEqual(chart["data"]["labels"], ["01", "02"])  # one month: the day
+		_data, chart, _summary = self.run_report(to_date="2001-03-31")
+		self.assertEqual(chart["data"]["labels"], ["02-01", "02-02", "03-01"])

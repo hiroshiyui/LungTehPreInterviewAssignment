@@ -41,7 +41,7 @@ move it to "Decided against" with the reason.
 From the app review of 2026-09-29. Work through the steps in order; each
 item ships with its tests.
 
-### Steps 1–3 — Correctness, "calculate monthly", and pay confidentiality
+### Steps 1–3 and the plots — done
 
 Done:
 - step 1: rates by work date (Hourly Rate History), re-costing on
@@ -50,7 +50,11 @@ Done:
 - step 2: the Monthly HR Cost report (employees × months), and "Show days
   without work" on Daily HR Cost;
 - step 3: HR Manager and HR User roles, pay at permlevel 1, permission-aware
-  reports (roles, User Permissions, permlevels), and tests for each role.
+  reports (roles, User Permissions, permlevels), and tests for each role;
+- step 4, plots: a "Chart" picker on both reports (cost by employee, cost
+  share, effective hourly rate; daily cost, hours, headcount), month-over-month
+  change in the monthly summary, the rate history chart on Employee, and the
+  HR Cost workspace (number cards and charts, all Report-based).
 
 One gap remains:
 
@@ -59,28 +63,6 @@ One gap remains:
   Frappe test runner doesn't provide.
 
 ### Step 4 — Polish
-
-Informative plots for HR. Each plot ships with a test of its data, and each is
-visible only to roles that may see pay (build charts and cards on the
-permission-aware report queries, or on Work Record, never on raw SQL):
-
-- [ ] Monthly HR Cost: stack each month's bar by employee, so the chart shows
-  who the cost goes to, not only the total.
-- [ ] Daily HR Cost: cost as bars with hours worked as a line on the same
-  axis (Frappe's `axis-mixed` chart), so an expensive day with few hours
-  stands out.
-- [ ] Cost share by employee for the selected range (a donut chart).
-- [ ] Effective hourly rate (total cost ÷ total hours) per month as a line,
-  which shows the effect of raises and of the staff mix.
-- [ ] Month-over-month change: this month's cost next to last month's, with the
-  difference in the report summary.
-- [ ] Rate history on the Employee form: a step line of `Valid From` →
-  `Hourly Rate` (pay data, so HR Manager only).
-- [ ] An "HR Cost" workspace with Number Cards (cost and hours this month,
-  change vs last month) and Dashboard Charts (the cost trend, cost by
-  employee), linking to both reports.
-
-Other polish:
 
 - [ ] Daily report: drill down from a day to its Work Records.
 - [ ] `employee_name` on Work Record is copied at save time and goes stale
@@ -91,7 +73,8 @@ Other polish:
 - [ ] Duplicate employee names are indistinguishable in link dropdowns.
 - [ ] `allow_import` + quick entry for Work Record (bulk / fast logging).
 - [ ] Employee "Connections" to its Work Records; a dock entry for the
-  module (the workspace is covered by the plots above).
+  module. HR Users have no workspace (every card on HR Cost shows pay), so
+  their entry point is the sidebar's Work Record link.
 - [ ] `pyproject.toml` still mentions `frappe~=16.0.0`.
 - [ ] Demo users (one HR Manager, one HR User) so learners can see the
   difference between the roles without creating users by hand.
@@ -102,6 +85,10 @@ Other polish:
 - [ ] `CHANGELOG.md` and the first tagged release (`release-engineering` skill).
 
 ## Decided against
+
+- *One chart with cost bars and an hours line (`axis-mixed`)*: costs run in
+  thousands and hours in tens, and Frappe's charts have one y axis, so the
+  hours line lies flat. The Daily report offers separate charts instead.
 
 - *Using `bench get-app` to install hr_cost*: it requires the app to be a git
   repository root. A symlink plus an editable install keeps the repo as the

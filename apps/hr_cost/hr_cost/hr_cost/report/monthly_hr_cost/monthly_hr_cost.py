@@ -13,8 +13,15 @@ def execute(filters: dict | None = None):
 	validate_filters(filters)
 
 	months = get_months(getdate(filters.from_date), getdate(filters.to_date))
-	data = get_data(filters, months)
-	return get_columns(months), data, None, get_chart(data, months), get_summary(data, months)
+	data, hours = get_data(filters, months)
+	cost = {month: sum(row[month_field(month)] for row in data) for month in months}
+	return (
+		get_columns(months),
+		data,
+		None,
+		get_chart(filters.chart, data, months, cost, hours),
+		get_summary(data, months, cost),
+	)
 
 
 def validate_filters(filters: frappe._dict) -> None:
@@ -51,12 +58,15 @@ def get_columns(months: list) -> list[dict]:
 	]
 
 
-def get_data(filters: frappe._dict, months: list) -> list[dict]:
+def get_data(filters: frappe._dict, months: list) -> tuple[list[dict], dict]:
 	"""One query, grouped by employee and calendar month, over the stored cost
 	(each Work Record is already costed at the rate valid on its date).
 
 	Like the daily report, the query runs with `ignore_permissions=False`, so
-	it honours the user's role, User Permissions and field permlevels."""
+	it honours the user's role, User Permissions and field permlevels.
+
+	Returns the report rows, and the hours worked per month (for the
+	effective hourly rate chart)."""
 	query_filters = {"date": ["between", [getdate(filters.from_date), getdate(filters.to_date)]]}
 	if filters.employee:
 		query_filters["employee"] = filters.employee
@@ -77,6 +87,7 @@ def get_data(filters: frappe._dict, months: list) -> list[dict]:
 	)
 
 	rows = {}  # employee -> report row
+	hours = dict.fromkeys(months, 0.0)
 	for r in query.run(as_dict=True):
 		row = rows.setdefault(
 			r.employee,
@@ -88,37 +99,82 @@ def get_data(filters: frappe._dict, months: list) -> list[dict]:
 				**{month_field(m): 0 for m in months},
 			),
 		)
-		row[month_field(getdate(f"{r.year}-{r.month:02d}-01"))] = flt(r.hr_cost)
+		month = getdate(f"{r.year}-{r.month:02d}-01")
+		row[month_field(month)] = flt(r.hr_cost)
+		hours[month] += flt(r.hours_worked)
 		row.hours_worked += flt(r.hours_worked)
 		row.hr_cost += flt(r.hr_cost)
 	# By name, then ID, so namesakes stay apart and in a stable order.
-	return sorted(rows.values(), key=lambda row: (row.employee_name or "", row.employee))
+	return sorted(rows.values(), key=lambda row: (row.employee_name or "", row.employee)), hours
 
 
-def get_chart(data: list[dict], months: list) -> dict | None:
+CHARTS = ("Cost by Employee", "Cost Share", "Effective Hourly Rate")
+
+
+def chart_label(month, months: list) -> str:
+	"""Short, so it fits under a bar: "Jan", or "Jan 26" when the range spans
+	years. The report page gives axis labels only a few characters."""
+	return f"{month:%b}" if months[0].year == months[-1].year else f"{month:%b %y}"
+
+
+def get_chart(chart: str | None, data: list[dict], months: list, cost: dict, hours: dict) -> dict | None:
+	"""The chart picked in the report's "Chart" filter."""
 	if not data:
 		return None
+	chart = chart or CHARTS[0]
+	if chart not in CHARTS:
+		frappe.throw(_("Unknown chart: {0}").format(chart))
+
+	if chart == "Cost Share":
+		# Who the range's cost goes to, as slices of the whole.
+		return {
+			"data": {
+				"labels": [row.employee_name for row in data],
+				"datasets": [{"name": _("HR Cost"), "values": [row.hr_cost for row in data]}],
+			},
+			# No "fieldtype": Frappe would format the legend's values as HTML.
+			"type": "donut",
+		}
+
+	if chart == "Effective Hourly Rate":
+		# Cost ÷ hours for each month: it rises with raises, and moves with who
+		# did the work. A month without work has no rate, so it's left out.
+		worked = [month for month in months if hours[month]]
+		return {
+			"data": {
+				"labels": [chart_label(month, months) for month in worked],
+				"datasets": [
+					{
+						"name": _("Effective Hourly Rate"),
+						"values": [flt(cost[month] / hours[month], 2) for month in worked],
+					}
+				],
+			},
+			"type": "line",
+			"fieldtype": "Currency",
+		}
+
+	# One bar per month, stacked by employee: the total, and who it goes to.
 	return {
 		"data": {
-			"labels": [f"{month:%b %Y}" for month in months],
+			"labels": [chart_label(month, months) for month in months],
 			"datasets": [
-				{
-					"name": _("Total HR Cost"),
-					"values": [sum(row[month_field(month)] for row in data) for month in months],
-				}
+				{"name": row.employee_name, "values": [row[month_field(month)] for month in months]}
+				for row in data
 			],
 		},
 		"type": "bar",
+		"barOptions": {"stacked": 1},
 		"fieldtype": "Currency",
 	}
 
 
-def get_summary(data: list[dict], months: list) -> list[dict]:
+def get_summary(data: list[dict], months: list, cost: dict) -> list[dict]:
 	total_cost = sum(row.hr_cost for row in data)
 	# Like the daily report, average over months with work: the default range is
 	# the whole year, and its months still to come would drag the average down.
-	months_with_work = sum(1 for month in months if any(row[month_field(month)] for row in data))
-	return [
+	worked = [month for month in months if cost[month]]
+	summary = [
 		{"label": _("Total HR Cost"), "value": total_cost, "datatype": "Currency", "indicator": "Blue"},
 		{
 			"label": _("Total Hours"),
@@ -129,8 +185,29 @@ def get_summary(data: list[dict], months: list) -> list[dict]:
 		{"label": _("Employees"), "value": len(data), "datatype": "Int", "indicator": "Grey"},
 		{
 			"label": _("Average HR Cost / Month"),
-			"value": total_cost / months_with_work if months_with_work else 0,
+			"value": total_cost / len(worked) if worked else 0,
 			"datatype": "Currency",
 			"indicator": "Grey",
 		},
 	]
+	if change := get_month_over_month(months, cost, worked):
+		summary.append(change)
+	return summary
+
+
+def get_month_over_month(months: list, cost: dict, worked: list) -> dict | None:
+	"""The latest month with work against the calendar month before it, when
+	both are in the range. A rise in cost shows red, a fall green."""
+	if not worked:
+		return None
+	latest = worked[-1]
+	previous = add_months(latest, -1)
+	if previous not in cost:
+		return None
+	change = cost[latest] - cost[previous]
+	return {
+		"label": _("{0} vs {1}").format(f"{latest:%b %Y}", f"{previous:%b %Y}"),
+		"value": change,
+		"datatype": "Currency",
+		"indicator": "Red" if change > 0 else "Green",
+	}

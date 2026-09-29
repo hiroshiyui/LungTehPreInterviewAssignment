@@ -1,0 +1,32 @@
+{
+ "chart_name": "HR Cost Share",
+ "chart_type": "Report",
+ "creation": "2026-09-29 11:18:44.921869",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart",
+ "dynamic_filters_json": "{\"from_date\": \"frappe.datetime.year_start()\", \"to_date\": \"frappe.datetime.year_end()\"}",
+ "filters_json": "{\"chart\": \"Cost Share\"}",
+ "group_by_type": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "modified": "2026-09-29 11:18:44.921869",
+ "modified_by": "Administrator",
+ "module": "HR Cost",
+ "name": "HR Cost Share",
+ "number_of_groups": 0,
+ "owner": "Administrator",
+ "report_name": "Monthly HR Cost",
+ "roles": [
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "show_values_over_chart": 0,
+ "time_interval": "Yearly",
+ "timeseries": 0,
+ "timespan": "Last Year",
+ "type": "Donut",
+ "use_report_chart": 1,
+ "y_axis": []
+}

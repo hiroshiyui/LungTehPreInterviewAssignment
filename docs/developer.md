@@ -83,6 +83,11 @@ reload the page.
   in whitelisted methods (`get_hourly_rate_on`). Plain `frappe.qb.from_()` and
   `frappe.get_all` skip every permission check. When you add a permission row,
   set every right explicitly: DocPerm defaults most of them to 1.
+- **Plots read the reports.** A chart or number card for the workspace is a
+  Report-type Dashboard Chart or Number Card on one of the two reports, never
+  a Document Type one on Work Record: that way it inherits the reports'
+  permission checks. To check a chart by eye, open it in a browser; the
+  unit tests cover its data.
 - Business rules live on the **server** (`validate()`). The client script
   (`work_record.js`) only previews values.
 - A Work Record's rate is the one **valid on its date**, from the employee's
@@ -106,6 +111,7 @@ Where things are:
 | `apps/hr_cost/hr_cost/hr_cost/doctype/work_record/` | Work Record: rate by date, cost, no future dates, 24 h cap, indexes |
 | `apps/hr_cost/hr_cost/hr_cost/report/daily_hr_cost/` | Daily HR Cost: the Script Report (py + js filters) + tests |
 | `apps/hr_cost/hr_cost/hr_cost/report/monthly_hr_cost/` | Monthly HR Cost: employees × months, same layout |
+| `apps/hr_cost/hr_cost/hr_cost/workspace/`, `dashboard_chart/`, `number_card/` | the HR Cost workspace and its charts and cards (all Report-based) |
 | `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning; includes a raise) |
 | `apps/hr_cost/hr_cost/patches/` | data migrations run by `bench migrate` |
 | `apps/hr_cost/hr_cost/fixtures/role.json` | the HR Manager and HR User roles (`bench export-fixtures`) |

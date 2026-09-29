@@ -32,7 +32,7 @@ class IntegrationTestMonthlyHRCost(IntegrationTestCase):
 		columns, _rows, chart, _summary = self.run_report()
 		fields = [c["fieldname"] for c in columns]
 		self.assertEqual(fields[2:5], ["m_2001_01", "m_2001_02", "m_2001_03"])
-		self.assertEqual(chart["data"]["labels"], ["Jan 2001", "Feb 2001", "Mar 2001"])
+		self.assertEqual(chart["data"]["labels"], ["Jan", "Feb", "Mar"])
 
 	def test_totals_per_employee_per_month(self):
 		_columns, rows, chart, summary = self.run_report()
@@ -44,7 +44,12 @@ class IntegrationTestMonthlyHRCost(IntegrationTestCase):
 		self.assertEqual((bob.m_2001_01, bob.m_2001_03), (800, 1200))
 		self.assertEqual(bob.hr_cost, 2000)
 
-		self.assertEqual(chart["data"]["datasets"][0]["values"], [1600, 0, 2200])
+		# The default chart stacks each month's bar by employee.
+		self.assertEqual(chart["barOptions"], {"stacked": 1})
+		self.assertEqual(
+			[(d["name"], d["values"]) for d in chart["data"]["datasets"]],
+			[("Test Alice", [800, 0, 1000]), ("Test Bob", [800, 0, 1200])],
+		)
 		self.assertEqual(summary["Total HR Cost"], 3800)
 		self.assertEqual(summary["Employees"], 2)
 		self.assertEqual(summary["Average HR Cost / Month"], 1900)  # February had no work
@@ -72,3 +77,32 @@ class IntegrationTestMonthlyHRCost(IntegrationTestCase):
 
 	def test_invalid_range(self):
 		self.assertRaises(frappe.ValidationError, execute, {"from_date": "2001-02-01", "to_date": "2001-01-31"})
+
+	def test_cost_share_chart(self):
+		_columns, _rows, chart, _summary = self.run_report(chart="Cost Share")
+		self.assertEqual(chart["type"], "donut")
+		self.assertEqual(chart["data"]["labels"], ["Test Alice", "Test Bob"])
+		self.assertEqual(chart["data"]["datasets"][0]["values"], [1800, 2000])
+
+	def test_effective_hourly_rate_chart(self):
+		_columns, _rows, chart, _summary = self.run_report(chart="Effective Hourly Rate")
+		self.assertEqual(chart["type"], "line")
+		# February had no work, so no rate. January: 1600 / 12 h; March, after
+		# Bob's raise: 2200 / 14 h.
+		self.assertEqual(chart["data"]["labels"], ["Jan", "Mar"])
+		self.assertEqual(chart["data"]["datasets"][0]["values"], [133.33, 157.14])
+
+	def test_unknown_chart(self):
+		self.assertRaises(frappe.ValidationError, self.run_report, chart="Pie In The Sky")
+
+	def test_month_over_month(self):
+		# The latest month with work (March) against February, which had none.
+		_columns, _rows, _chart, summary = self.run_report()
+		self.assertEqual(summary["Mar 2001 vs Feb 2001"], 2200)
+		# Without the previous month in the range there's nothing to compare.
+		_columns, _rows, _chart, summary = self.run_report(from_date="2001-03-01")
+		self.assertFalse([label for label in summary if " vs " in label])
+
+	def test_chart_labels_show_the_year_when_the_range_spans_years(self):
+		_columns, _rows, chart, _summary = self.run_report(from_date="2000-12-01")
+		self.assertEqual(chart["data"]["labels"], ["Dec 00", "Jan 01", "Feb 01", "Mar 01"])

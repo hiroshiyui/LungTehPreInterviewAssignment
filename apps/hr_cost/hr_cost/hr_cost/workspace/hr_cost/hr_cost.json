@@ -1,0 +1,91 @@
+{
+ "charts": [
+  {
+   "chart_name": "HR Cost by Employee",
+   "label": "HR Cost by Employee"
+  },
+  {
+   "chart_name": "HR Cost Share",
+   "label": "HR Cost Share"
+  },
+  {
+   "chart_name": "Effective Hourly Rate",
+   "label": "Effective Hourly Rate"
+  },
+  {
+   "chart_name": "Daily HR Cost This Month",
+   "label": "Daily HR Cost This Month"
+  }
+ ],
+ "content": "[{\"id\": \"12e5a04cc2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"HR Cost This Month\", \"col\": 4}}, {\"id\": \"c9058e3508\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Hours Worked This Month\", \"col\": 4}}, {\"id\": \"0b96a9412f\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"HR Cost This Year\", \"col\": 4}}, {\"id\": \"e388790baa\", \"type\": \"chart\", \"data\": {\"chart_name\": \"HR Cost by Employee\", \"col\": 12}}, {\"id\": \"60cb21bcf6\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Daily HR Cost This Month\", \"col\": 12}}, {\"id\": \"6cbb33ab33\", \"type\": \"chart\", \"data\": {\"chart_name\": \"HR Cost Share\", \"col\": 6}}, {\"id\": \"f63e766546\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Effective Hourly Rate\", \"col\": 6}}, {\"id\": \"e5777e7b63\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"9d69fd7880\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Employee\", \"col\": 3}}, {\"id\": \"78fc66486b\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Work Record\", \"col\": 3}}, {\"id\": \"9e8232444d\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Daily HR Cost\", \"col\": 3}}, {\"id\": \"8d483d6d07\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Monthly HR Cost\", \"col\": 3}}]",
+ "creation": "2026-09-29 11:18:44.951378",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "chart-column-stacked",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "HR Cost",
+ "link_type": "DocType",
+ "links": [],
+ "modified": "2026-09-29 11:18:55.230806",
+ "modified_by": "Administrator",
+ "module": "HR Cost",
+ "name": "HR Cost",
+ "number_cards": [
+  {
+   "label": "HR Cost This Month",
+   "number_card_name": "HR Cost This Month"
+  },
+  {
+   "label": "Hours Worked This Month",
+   "number_card_name": "Hours Worked This Month"
+  },
+  {
+   "label": "HR Cost This Year",
+   "number_card_name": "HR Cost This Year"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "doc_view": "List",
+   "label": "Employee",
+   "link_to": "Employee",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Work Record",
+   "link_to": "Work Record",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Daily HR Cost",
+   "link_to": "Daily HR Cost",
+   "report_ref_doctype": "Work Record",
+   "type": "Report"
+  },
+  {
+   "doc_view": "",
+   "label": "Monthly HR Cost",
+   "link_to": "Monthly HR Cost",
+   "report_ref_doctype": "Work Record",
+   "type": "Report"
+  }
+ ],
+ "standard": 1,
+ "title": "HR Cost",
+ "type": "Workspace"
+}

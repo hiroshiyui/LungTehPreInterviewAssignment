@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Count
-from frappe.utils import add_days, flt, formatdate, getdate
+from frappe.utils import add_days, flt, getdate
 
 
 def execute(filters: dict | None = None):
@@ -15,7 +15,7 @@ def execute(filters: dict | None = None):
 	data = get_data(filters)
 	if filters.show_empty_days:
 		data = fill_empty_days(data, getdate(filters.from_date), getdate(filters.to_date))
-	return get_columns(), data, None, get_chart(data), get_summary(data)
+	return get_columns(), data, None, get_chart(filters.chart, data), get_summary(data)
 
 
 def validate_filters(filters: frappe._dict) -> None:
@@ -77,16 +77,38 @@ def fill_empty_days(data: list[dict], from_date, to_date) -> list[dict]:
 	return filled
 
 
-def get_chart(data: list[dict]) -> dict | None:
+# Chart name -> (the row field it plots, chart type, value format). Separate
+# charts, not one mixed chart: costs run in thousands and hours in tens, and
+# Frappe's charts have a single y axis, so hours would lie flat on it.
+CHARTS = {
+	"HR Cost": ("hr_cost", "bar", "Currency"),
+	"Hours Worked": ("hours_worked", "bar", "Float"),
+	"Employees at Work": ("employees", "line", "Int"),
+}
+
+
+def chart_label(date, data: list[dict]) -> str:
+	"""Short, so it fits under a bar: the day ("07") when the range is one
+	month, otherwise month-day ("09-07"). The table keeps the full date."""
+	first, last = data[0].date, data[-1].date
+	return f"{date:%d}" if (first.year, first.month) == (last.year, last.month) else f"{date:%m-%d}"
+
+
+def get_chart(chart: str | None, data: list[dict]) -> dict | None:
+	"""The chart picked in the report's "Chart" filter."""
 	if not data:
 		return None
+	chart = chart or "HR Cost"
+	if chart not in CHARTS:
+		frappe.throw(_("Unknown chart: {0}").format(chart))
+	field, chart_type, fieldtype = CHARTS[chart]
 	return {
 		"data": {
-			"labels": [formatdate(row.date) for row in data],
-			"datasets": [{"name": _("Total HR Cost"), "values": [flt(row.hr_cost) for row in data]}],
+			"labels": [chart_label(row.date, data) for row in data],
+			"datasets": [{"name": _(chart), "values": [flt(row[field]) for row in data]}],
 		},
-		"type": "bar",
-		"fieldtype": "Currency",
+		"type": chart_type,
+		"fieldtype": fieldtype,
 	}
 
 

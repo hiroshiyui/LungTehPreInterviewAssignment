@@ -24,6 +24,14 @@ frappe.query_reports["Daily HR Cost"] = {
 			options: "Employee",
 		},
 		{
+			fieldname: "chart",
+			label: __("Chart"),
+			fieldtype: "Select",
+			// Keep in step with CHARTS in daily_hr_cost.py.
+			options: ["HR Cost", "Hours Worked", "Employees at Work"],
+			default: "HR Cost",
+		},
+		{
 			fieldname: "show_empty_days",
 			label: __("Show days without work"),
 			fieldtype: "Check",

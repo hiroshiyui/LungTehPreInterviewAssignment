@@ -11,7 +11,8 @@
   "employee_name",
   "hourly_rate",
   "section_break_rates",
-  "hourly_rates"
+  "hourly_rates",
+  "rate_history_chart"
  ],
  "fields": [
   {
@@ -47,12 +48,18 @@
    "label": "Hourly Rate History",
    "options": "Employee Hourly Rate",
    "permlevel": 1
+  },
+  {
+   "fieldname": "rate_history_chart",
+   "fieldtype": "HTML",
+   "label": "Rate History Chart",
+   "permlevel": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 11:05:23.612088",
+ "modified": "2026-09-29 11:16:20.064413",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Employee",

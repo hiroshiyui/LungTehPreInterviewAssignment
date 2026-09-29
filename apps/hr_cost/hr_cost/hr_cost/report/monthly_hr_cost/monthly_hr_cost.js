@@ -23,5 +23,13 @@ frappe.query_reports["Monthly HR Cost"] = {
 			fieldtype: "Link",
 			options: "Employee",
 		},
+		{
+			fieldname: "chart",
+			label: __("Chart"),
+			fieldtype: "Select",
+			// Keep in step with CHARTS in monthly_hr_cost.py.
+			options: ["Cost by Employee", "Cost Share", "Effective Hourly Rate"],
+			default: "Cost by Employee",
+		},
 	],
 };
