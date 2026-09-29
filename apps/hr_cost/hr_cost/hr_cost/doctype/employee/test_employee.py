@@ -3,9 +3,10 @@
 
 import frappe
 from frappe.tests import IntegrationTestCase
+from frappe.utils import add_days, getdate, today
 
-from hr_cost.hr_cost.doctype.employee.employee import get_hourly_rate
-from hr_cost.tests.utils import add_rate, make_employee, make_work_record
+from hr_cost.hr_cost.doctype.employee.employee import get_hourly_rate, get_salary_costs, work_permit_notice
+from hr_cost.tests.utils import add_rate, add_salary, make_employee, make_work_record
 
 
 class IntegrationTestEmployee(IntegrationTestCase):
@@ -41,6 +42,7 @@ class IntegrationTestEmployee(IntegrationTestCase):
 			{
 				"doctype": "Employee",
 				"employee_name": "Test Hired Later",
+				"date_of_joining": "2000-01-01",
 				"hourly_rates": [{"valid_from": "2001-06-01", "hourly_rate": 300}],
 			}
 		).insert()
@@ -95,3 +97,115 @@ class IntegrationTestEmployee(IntegrationTestCase):
 		doc = frappe.get_doc("Employee", employee)
 		doc.hourly_rates[0].valid_from = "2001-02-01"  # the base rate no longer covers January
 		self.assertRaises(frappe.ValidationError, doc.save)
+
+	def test_renaming_updates_the_name_on_work_records(self):
+		employee = make_employee("Test Gina", 300)
+		record = make_work_record(employee, "2001-06-01", 8)
+		doc = frappe.get_doc("Employee", employee)
+		doc.employee_name = "Test Gina Renamed"
+		doc.save()
+		self.assertEqual(frappe.db.get_value("Work Record", record.name, "employee_name"), "Test Gina Renamed")
+
+	def test_a_namesake_is_allowed_with_a_warning(self):
+		first = make_employee("Test Hana", 300)
+		frappe.clear_messages()
+		second = make_employee("Test Hana", 310)
+		self.assertNotEqual(first, second)
+		self.assertIn(first, " ".join(m.get("message", "") for m in map(frappe.parse_json, frappe.message_log)))
+
+	def test_monthly_pay_mirrors_the_salary(self):
+		doc = frappe.get_doc("Employee", make_employee("Test Ivy", monthly_salary=36000))
+		self.assertEqual((doc.pay_basis, doc.monthly_salary, doc.hourly_rate), ("Monthly", 36000, 0))
+		self.assertEqual(
+			[(r.valid_from, r.pay_basis, r.monthly_salary) for r in doc.hourly_rates], [(None, "Monthly", 36000)]
+		)
+
+	def test_monthly_salary_must_be_positive(self):
+		self.assertRaises(frappe.ValidationError, make_employee, "Test Zero Salary", monthly_salary=0)
+
+	def test_a_contract_change_to_monthly_pay_recosts_later_work_only(self):
+		employee = make_employee("Test Jay", 200)
+		before = make_work_record(employee, "2001-07-10", 8)
+		after = make_work_record(employee, "2001-07-20", 8)
+		doc = add_salary(employee, "2001-07-15", 36000)
+		self.assertEqual((doc.pay_basis, doc.monthly_salary, doc.hourly_rate), ("Monthly", 36000, 0))
+		self.assertEqual(frappe.db.get_value("Work Record", before.name, "cost"), 1600)
+		# Under monthly pay the salary covers the hours: the record costs nothing extra.
+		self.assertEqual(frappe.db.get_value("Work Record", after.name, ["hourly_rate", "cost"]), (0, 0))
+
+	def test_relieving_date_cannot_precede_joining(self):
+		self.assertRaises(
+			frappe.ValidationError,
+			make_employee,
+			"Test Kim",
+			200,
+			date_of_joining="2001-02-01",
+			relieving_date="2001-01-31",
+		)
+
+	def test_employment_dates_must_cover_recorded_work(self):
+		employee = make_employee("Test Lee", 200)
+		make_work_record(employee, "2001-03-10", 8)
+		doc = frappe.get_doc("Employee", employee)
+		doc.date_of_joining = "2001-03-11"
+		self.assertRaises(frappe.ValidationError, doc.save)
+		doc.reload()
+		doc.relieving_date = "2001-03-09"
+		self.assertRaises(frappe.ValidationError, doc.save)
+
+	def test_salary_accrues_a_thirtieth_per_day_while_employed(self):
+		monthly = make_employee(
+			"Test Mia", monthly_salary=30000, date_of_joining="2001-01-10", relieving_date="2001-01-12"
+		)
+		hourly = make_employee("Test Ned", 200)
+		employees = frappe.get_all(
+			"Employee", {"name": ["in", [monthly, hourly]]}, ["name", "date_of_joining", "relieving_date"]
+		)
+		costs = get_salary_costs(employees, "2001-01-01", "2001-01-31")
+		self.assertEqual(list(costs), [monthly])  # hourly pay accrues nothing
+		self.assertEqual(
+			costs[monthly],
+			{getdate("2001-01-10"): 1000, getdate("2001-01-11"): 1000, getdate("2001-01-12"): 1000},
+		)
+
+	def test_salary_follows_the_pay_history(self):
+		# Hourly until the 15th, then monthly: salary accrues from the 15th only.
+		employee = make_employee("Test Oli", 200)
+		add_salary(employee, "2001-01-15", 30000)
+		employees = frappe.get_all("Employee", {"name": employee}, ["name", "date_of_joining", "relieving_date"])
+		days = get_salary_costs(employees, "2001-01-01", "2001-01-31")[employee]
+		self.assertEqual((min(days), max(days), len(days)), (getdate("2001-01-15"), getdate("2001-01-31"), 17))
+
+	def test_salary_does_not_accrue_in_the_future(self):
+		employee = make_employee("Test Pia", monthly_salary=30000)
+		employees = frappe.get_all("Employee", {"name": employee}, ["name", "date_of_joining", "relieving_date"])
+		days = get_salary_costs(employees, add_days(today(), -2), add_days(today(), 10))[employee]
+		self.assertEqual(max(days), getdate(today()))
+		self.assertEqual(len(days), 3)
+
+	def test_names_in_other_writing_systems(self):
+		employee = make_employee(
+			"Somchai Jaidee",
+			200,
+			nationality="Thailand",
+			other_names=[
+				{"writing_system": "Thai", "other_name": "สมชาย ใจดี"},
+				{"writing_system": "Chinese", "other_name": "宋猜"},
+			],
+		)
+		doc = frappe.get_doc("Employee", employee)
+		self.assertEqual(doc.nationality, "Thailand")
+		self.assertEqual([(r.writing_system, r.other_name) for r in doc.other_names], [("Thai", "สมชาย ใจดี"), ("Chinese", "宋猜")])
+
+	def test_work_permit_notice(self):
+		self.assertIn("expired", work_permit_notice(add_days(today(), -1)))
+		self.assertIn("in 30 days", work_permit_notice(add_days(today(), 30)))
+		self.assertIsNone(work_permit_notice(add_days(today(), 31)))
+		self.assertIsNone(work_permit_notice(None))
+		# No longer employed: no reminder.
+		self.assertIsNone(work_permit_notice(add_days(today(), -1), relieving_date=add_days(today(), -5)))
+
+	def test_saving_warns_about_an_expiring_work_permit(self):
+		frappe.clear_messages()
+		make_employee("Test Permit", 200, work_permit_expiry=add_days(today(), 10))
+		self.assertIn("in 10 days", " ".join(str(m) for m in frappe.message_log))

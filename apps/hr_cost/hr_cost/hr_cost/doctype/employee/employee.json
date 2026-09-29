@@ -1,7 +1,6 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
- "allow_rename": 1,
  "autoname": "format:EMP-{#####}",
  "creation": "2026-09-29 08:41:31.731170",
  "doctype": "DocType",
@@ -9,7 +8,19 @@
  "engine": "InnoDB",
  "field_order": [
   "employee_name",
+  "nationality",
+  "other_names",
+  "column_break_employment",
+  "date_of_joining",
+  "relieving_date",
+  "section_break_work_permit",
+  "work_permit_number",
+  "column_break_work_permit",
+  "work_permit_expiry",
+  "section_break_pay",
+  "pay_basis",
   "hourly_rate",
+  "monthly_salary",
   "section_break_rates",
   "hourly_rates",
   "rate_history_chart"
@@ -25,41 +36,132 @@
    "reqd": 1
   },
   {
-   "description": "For a new employee, the starting rate. Afterwards it shows the latest rate: change rates by adding a row to Hourly Rate History.",
+   "depends_on": "eval:doc.pay_basis=='Hourly'",
+   "description": "For a new employee, the starting rate. Afterwards it shows the latest rate: change pay by adding a row to Pay History.",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Hourly Rate",
+   "mandatory_depends_on": "eval:doc.__islocal && doc.pay_basis=='Hourly'",
    "non_negative": 1,
    "permlevel": 1,
-   "read_only_depends_on": "eval:!doc.__islocal",
-   "reqd": 1
+   "read_only_depends_on": "eval:!doc.__islocal"
   },
   {
    "fieldname": "section_break_rates",
    "fieldtype": "Section Break",
-   "label": "Hourly Rate History",
+   "label": "Pay History",
    "permlevel": 1
   },
   {
-   "description": "Each Work Record is costed at the rate valid on its date.",
+   "description": "Each row applies from its Valid From date (empty: from the start). Hourly work is costed at the rate valid on its date; a monthly salary accrues at salary \u00f7 30 per day.",
    "fieldname": "hourly_rates",
    "fieldtype": "Table",
-   "label": "Hourly Rate History",
+   "label": "Pay History",
    "options": "Employee Hourly Rate",
    "permlevel": 1
   },
   {
    "fieldname": "rate_history_chart",
    "fieldtype": "HTML",
-   "label": "Rate History Chart",
+   "label": "Pay History Chart",
    "permlevel": 1
+  },
+  {
+   "fieldname": "column_break_employment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Salary accrues from this date, and Work Records can't be dated earlier.",
+   "fieldname": "date_of_joining",
+   "fieldtype": "Date",
+   "label": "Date of Joining",
+   "reqd": 1
+  },
+  {
+   "description": "The last day of employment, if it has ended.",
+   "fieldname": "relieving_date",
+   "fieldtype": "Date",
+   "label": "Relieving Date"
+  },
+  {
+   "fieldname": "section_break_pay",
+   "fieldtype": "Section Break",
+   "label": "Pay",
+   "permlevel": 1
+  },
+  {
+   "default": "Hourly",
+   "description": "Hourly: paid per hour worked. Monthly: a fixed monthly salary, costed at salary \u00f7 30 per calendar day.",
+   "fieldname": "pay_basis",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Pay Basis",
+   "options": "Hourly\nMonthly",
+   "permlevel": 1,
+   "read_only_depends_on": "eval:!doc.__islocal",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.pay_basis=='Monthly'",
+   "description": "For a new employee, the starting salary. Afterwards it shows the latest salary: change pay by adding a row to Pay History.",
+   "fieldname": "monthly_salary",
+   "fieldtype": "Currency",
+   "label": "Monthly Salary",
+   "mandatory_depends_on": "eval:doc.__islocal && doc.pay_basis=='Monthly'",
+   "non_negative": 1,
+   "permlevel": 1,
+   "read_only_depends_on": "eval:!doc.__islocal"
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "description": "The same person's name as written in other scripts: the passport's Latin spelling, a Chinese name, the name in Thai, ... Employee Name stays the one shown everywhere.",
+   "fieldname": "other_names",
+   "fieldtype": "Table",
+   "label": "Names in Other Writing Systems",
+   "options": "Employee Other Name"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.work_permit_number || doc.work_permit_expiry",
+   "fieldname": "section_break_work_permit",
+   "fieldtype": "Section Break",
+   "label": "Work Permit"
+  },
+  {
+   "description": "For foreign staff: the work permit or Resident Certificate (ARC) number.",
+   "fieldname": "work_permit_number",
+   "fieldtype": "Data",
+   "label": "Work Permit Number"
+  },
+  {
+   "fieldname": "column_break_work_permit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Saving warns when it's 30 days away or less; Work Records dated after it warn too.",
+   "fieldname": "work_permit_expiry",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Work Permit Expiry"
   }
  ],
  "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-09-29 11:16:20.064413",
+ "links": [
+  {
+   "group": "Work",
+   "link_doctype": "Work Record",
+   "link_fieldname": "employee"
+  }
+ ],
+ "modified": "2026-09-29 16:03:17.883692",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Employee",

@@ -41,7 +41,7 @@ move it to "Decided against" with the reason.
 From the app review of 2026-09-29. Work through the steps in order; each
 item ships with its tests.
 
-### Steps 1–3 and the plots — done
+### Steps 1–4, and pay per contract — done
 
 Done:
 - step 1: rates by work date (Hourly Rate History), re-costing on
@@ -54,40 +54,53 @@ Done:
 - step 4, plots: a "Chart" picker on both reports (cost by employee, cost
   share, effective hourly rate; daily cost, hours, headcount), month-over-month
   change in the monthly summary, the rate history chart on Employee, and the
-  HR Cost workspace (number cards and charts, all Report-based).
+  HR Cost workspace (number cards and charts, all Report-based);
+- step 4, polish: drill-down from a day to its Work Records, employee names
+  kept current on Work Records, a warning for namesakes, import and quick
+  entry for Work Records, Employee Connections, demo users per HR role,
+  renaming and web indexing off, and README screenshots;
+- pay per the employment contract (Taiwan's labour law): hourly or monthly
+  pay terms in a dated Pay History, employment dates, salaries at ÷ 30 per
+  calendar day in both reports, and provisioning that answers Frappe's setup
+  wizard (country, time zone, currency);
+- a "Download PDF" button on both reports (A4, wkhtmltopdf, Noto fonts for
+  names in any script);
+- staff from many countries: nationality (a report filter), names in other
+  writing systems, work permit expiry reminders, per-user desk language.
 
-One gap remains:
+Remaining:
+
+- [ ] **Overtime for monthly-paid staff** (Labor Standards Act art. 24):
+  hours beyond 8 a day at (salary ÷ 240) × 1.34 for the first 2 h and × 1.67
+  for the next 2 h; rest days and public holidays have their own rates. For
+  now a monthly-paid worker's Work Records cost nothing beyond the salary.
+- [ ] Translate the app's own labels (field names, report titles, messages)
+  into Traditional Chinese, Vietnamese, Thai and Indonesian; Frappe's own
+  UI is already translated.
+- [ ] Find employees by their names in other writing systems: link search
+  only looks at Employee Name.
+- [ ] A list or number card of work permits expiring in the next 30 days (for
+  now: filter the Employee list by Work Permit Expiry).
+- [ ] PDFs have the tables and figures but not the charts: wkhtmltopdf can't
+  run the chart library. Render the chart as SVG on the server to include it.
+- [ ] Hide the Pay History grid's Hourly Rate column for monthly rows (and
+  Monthly Salary for hourly rows); it shows 0.00 there.
 
 - [ ] The row lock that serialises the 24 h check has no automated test: a
   deterministic test needs two concurrent database connections, which the
   Frappe test runner doesn't provide.
 
-### Step 4 — Polish
-
-- [ ] Daily report: drill down from a day to its Work Records.
-- [ ] `employee_name` on Work Record is copied at save time and goes stale
-  when an Employee is renamed: drop it (links already show the current name)
-  or refresh it on Employee save.
-- [ ] `allow_rename` and `index_web_pages_for_search` are on for both
-  DocTypes; neither makes sense for them.
-- [ ] Duplicate employee names are indistinguishable in link dropdowns.
-- [ ] `allow_import` + quick entry for Work Record (bulk / fast logging).
-- [ ] Employee "Connections" to its Work Records; a dock entry for the
-  module. HR Users have no workspace (every card on HR Cost shows pay), so
-  their entry point is the sidebar's Work Record link.
-- [ ] `pyproject.toml` still mentions `frappe~=16.0.0`.
-- [ ] Demo users (one HR Manager, one HR User) so learners can see the
-  difference between the roles without creating users by hand.
-
 ## Docs
 
-- [ ] Screenshots of the report and the forms in the README (with alt text).
-- [ ] Provisioning could complete Frappe's first-login setup wizard (language,
-  country, time zone, currency) from `group_vars`, so the demo opens straight
-  on the desk. For now the README and troubleshooting explain it.
 - [ ] `CHANGELOG.md` and the first tagged release (`release-engineering` skill).
 
 ## Decided against
+
+- *A dock entry for the HR Cost module (for now)*: at the pinned Frappe commit
+  the desk's Dock, Sidebar and Desktop Icon are being reworked (see
+  `frappe/desk/RETIRING.md` there). Revisit when the pin moves. HR Users,
+  who have no workspace because every card on it shows pay, reach Work
+  Records from the sidebar.
 
 - *One chart with cost bars and an hours line (`axis-mixed`)*: costs run in
   thousands and hours in tens, and Frappe's charts have one y axis, so the

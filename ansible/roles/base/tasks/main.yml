@@ -8,6 +8,10 @@
       - cron
       - curl
       - file              # used by `bench restore` to detect archive types
+      # Server-side fonts for PDFs: employees come from many countries, and a name
+      # in a script without a font prints as empty boxes.
+      - fonts-noto-cjk    # Chinese, Japanese, Korean
+      - fonts-noto-core   # most other scripts: Thai, Burmese, Khmer, Lao, Vietnamese, ...
       - git
       - gnupg
       - libffi-dev
@@ -17,6 +21,7 @@
       - pkg-config
       - python3-debian
       - rsync
+      - wkhtmltopdf       # Frappe's PDF engine: the reports' "Download PDF"
       - xz-utils
     state: present
     update_cache: true

@@ -38,9 +38,31 @@ class WorkRecord(Document):
 		self.cost = flt(flt(self.hours_worked) * flt(self.hourly_rate), self.precision("cost"))
 
 	def validate_date(self):
+		if not self.date or not self.employee:
+			return  # the mandatory-field check reports these
 		# Otherwise future costs would already show up in this month's report.
-		if self.date and getdate(self.date) > getdate(today()):
+		if getdate(self.date) > getdate(today()):
 			frappe.throw(_("Date cannot be in the future."))
+		joining, relieving, permit_expiry = frappe.db.get_value(
+			"Employee", self.employee, ["date_of_joining", "relieving_date", "work_permit_expiry"]
+		)
+		if (joining and getdate(self.date) < getdate(joining)) or (
+			relieving and getdate(self.date) > getdate(relieving)
+		):
+			frappe.throw(
+				_("{0} was not employed on {1}.").format(
+					self.employee_name or self.employee, frappe.format(self.date, "Date")
+				)
+			)
+		# Work after the permit expired is recorded (it happened), with a warning.
+		if permit_expiry and getdate(self.date) > getdate(permit_expiry):
+			frappe.msgprint(
+				_("{0}'s work permit expired on {1}, before this work date.").format(
+					self.employee_name or self.employee, frappe.format(permit_expiry, "Date")
+				),
+				indicator="orange",
+				alert=True,
+			)
 
 	def validate_hours_worked(self):
 		if flt(self.hours_worked) <= 0:
@@ -71,12 +93,14 @@ class WorkRecord(Document):
 	def set_hourly_rate(self):
 		# The rate valid on the *work* date, not today's: a record entered late,
 		# after a raise, is still costed at the rate that applied on that day.
+		# Under monthly pay it's 0: the salary covers the hours (the reports add
+		# the salary itself), so the record logs hours only.
 		if not self.employee or not self.date:
 			return  # the mandatory-field check reports these
 		rate = get_hourly_rate(self.employee, self.date)
 		if rate is None:
 			frappe.throw(
-				_("{0} has no hourly rate valid on {1}.").format(
+				_("{0} has no pay terms valid on {1}.").format(
 					self.employee_name or self.employee, frappe.format(self.date, "Date")
 				)
 			)

@@ -65,6 +65,22 @@
       when: hr_cost_app_installed is skipped
       changed_when: false   # migrate is idempotent
 
+    # Before the demo users exist: once any non-admin user does, Frappe marks
+    # its wizard complete by itself, without the answers (see hr_cost/setup.py).
+    - name: Answer Frappe's setup wizard (language, country, time zone, currency)
+      ansible.builtin.command:
+        argv:
+          - "{{ bench_bin }}"
+          - --site
+          - "{{ site_name }}"
+          - execute
+          - "{{ app_name }}.setup.complete_site_setup"
+          - --kwargs
+          - "{{ site_setup | to_json }}"
+        chdir: "{{ bench_path }}"
+      register: hr_cost_app_setup
+      changed_when: "'\"changed\": 0' not in hr_cost_app_setup.stdout"
+
     - name: Load demo data
       ansible.builtin.command:
         argv: ["{{ bench_bin }}", --site, "{{ site_name }}", execute, "{{ app_name }}.demo.create_demo_data"]

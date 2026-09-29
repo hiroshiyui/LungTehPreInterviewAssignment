@@ -4,17 +4,47 @@
 import frappe
 
 
-def make_employee(employee_name: str, hourly_rate: float) -> str:
-	"""An employee whose base rate (empty Valid From) is `hourly_rate`."""
+def make_employee(
+	employee_name: str,
+	hourly_rate: float | None = None,
+	*,
+	monthly_salary: float | None = None,
+	date_of_joining: str = "2000-01-01",  # before every test date (2001)
+	relieving_date: str | None = None,
+	**fields,
+) -> str:
+	"""An employee paid `hourly_rate` per hour, or `monthly_salary` a month,
+	from the start (the base row of their Pay History). `fields` sets any other
+	Employee field (nationality, work_permit_expiry, other_names, ...)."""
 	return frappe.get_doc(
-		{"doctype": "Employee", "employee_name": employee_name, "hourly_rate": hourly_rate}
+		{
+			"doctype": "Employee",
+			"employee_name": employee_name,
+			"pay_basis": "Monthly" if monthly_salary else "Hourly",
+			"hourly_rate": hourly_rate,
+			"monthly_salary": monthly_salary,
+			"date_of_joining": date_of_joining,
+			"relieving_date": relieving_date,
+			**fields,
+		}
 	).insert().name
 
 
 def add_rate(employee: str, valid_from: str | None, hourly_rate: float):
-	"""Add a row to the employee's Hourly Rate History and save."""
+	"""Add hourly pay terms to the employee's Pay History and save."""
+	return _add_pay(employee, {"valid_from": valid_from, "pay_basis": "Hourly", "hourly_rate": hourly_rate})
+
+
+def add_salary(employee: str, valid_from: str | None, monthly_salary: float):
+	"""Add monthly pay terms to the employee's Pay History and save."""
+	return _add_pay(
+		employee, {"valid_from": valid_from, "pay_basis": "Monthly", "monthly_salary": monthly_salary}
+	)
+
+
+def _add_pay(employee: str, row: dict):
 	doc = frappe.get_doc("Employee", employee)
-	doc.append("hourly_rates", {"valid_from": valid_from, "hourly_rate": hourly_rate})
+	doc.append("hourly_rates", row)
 	doc.save()
 	return doc
 

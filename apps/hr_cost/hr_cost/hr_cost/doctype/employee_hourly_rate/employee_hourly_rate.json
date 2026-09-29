@@ -8,7 +8,9 @@
  "engine": "InnoDB",
  "field_order": [
   "valid_from",
-  "hourly_rate"
+  "pay_basis",
+  "hourly_rate",
+  "monthly_salary"
  ],
  "fields": [
   {
@@ -19,19 +21,39 @@
    "label": "Valid From"
   },
   {
+   "depends_on": "eval:doc.pay_basis=='Hourly'",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Hourly Rate",
-   "non_negative": 1,
+   "mandatory_depends_on": "eval:doc.pay_basis=='Hourly'",
+   "non_negative": 1
+  },
+  {
+   "default": "Hourly",
+   "description": "As agreed in the employment contract.",
+   "fieldname": "pay_basis",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Pay Basis",
+   "options": "Hourly\nMonthly",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.pay_basis=='Monthly'",
+   "fieldname": "monthly_salary",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Monthly Salary",
+   "mandatory_depends_on": "eval:doc.pay_basis=='Monthly'",
+   "non_negative": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-29 10:24:22.880909",
+ "modified": "2026-09-29 12:42:56.408847",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Employee Hourly Rate",

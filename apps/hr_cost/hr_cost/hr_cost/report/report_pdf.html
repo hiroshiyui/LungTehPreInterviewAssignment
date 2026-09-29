@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ title|e }}</title>
+<style>
+	/* Every value is escaped (|e): employee names are user input. */
+	/* Rendered by wkhtmltopdf (old WebKit): plain tables and floats, no flexbox. */
+	body { font-family: "Noto Sans CJK TC", "Noto Sans", sans-serif; font-size: 10pt; color: #1f272e; margin: 0; }
+	h1 { font-size: 16pt; margin: 0 0 2pt; }
+	.meta { color: #525252; margin-bottom: 10pt; }
+	.summary { width: 100%; border-collapse: collapse; margin-bottom: 12pt; }
+	.summary td { border: 1px solid #d1d8dd; padding: 5pt 8pt; width: 20%; }
+	.summary .label { display: block; color: #525252; font-size: 8.5pt; }
+	.summary .value { display: block; font-size: 12pt; font-weight: bold; }
+	table.data { width: 100%; border-collapse: collapse; }
+	table.data th, table.data td { border-bottom: 1px solid #d1d8dd; padding: 3pt 5pt; text-align: left; white-space: nowrap; }
+	table.data th { background: #f3f3f3; font-weight: bold; }
+	table.data .num { text-align: right; }
+	table.data tr { page-break-inside: avoid; }
+	table.data thead { display: table-header-group; } /* repeat the header on every page */
+	table.data tr.total td { font-weight: bold; border-top: 2px solid #1f272e; border-bottom: none; }
+	.empty { color: #525252; padding: 12pt 0; }
+	.footer { margin-top: 14pt; color: #525252; font-size: 8pt; }
+</style>
+</head>
+<body>
+	<h1>{{ title|e }}</h1>
+	<div class="meta">
+		{{ period|e }}{% if employee %} · {{ employee|e }}{% endif %}{% if nationality %} · {{ _(nationality)|e }}{% endif %}
+	</div>
+
+	<table class="summary"><tr>
+		{% for item in summary %}
+		<td><span class="label">{{ item.label|e }}</span><span class="value">{{ item.value|e }}</span></td>
+		{% endfor %}
+	</tr></table>
+
+	{% if rows %}
+	<table class="data">
+		<thead><tr>
+			{% for column in columns %}<th{% if column.numeric %} class="num"{% endif %}>{{ column.label|e }}</th>{% endfor %}
+		</tr></thead>
+		<tbody>
+			{% for row in rows %}
+			<tr>{% for cell in row %}<td{% if columns[loop.index0].numeric %} class="num"{% endif %}>{{ cell|e }}</td>{% endfor %}</tr>
+			{% endfor %}
+			{% if total %}
+			<tr class="total">{% for cell in total %}<td{% if columns[loop.index0].numeric %} class="num"{% endif %}>{{ cell|e }}</td>{% endfor %}</tr>
+			{% endif %}
+		</tbody>
+	</table>
+	{% else %}
+	<div class="empty">{{ _("No HR cost in this period.") }}</div>
+	{% endif %}
+
+	<div class="footer">{{ generated|e }} · {{ _("Confidential: contains pay data.") }}</div>
+</body>
+</html>

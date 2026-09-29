@@ -105,15 +105,19 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
 ## Step 4 — The hr_cost app: correctness
 
 - **Work Record business rules** (`work_record.py`):
-  - `hourly_rate` is the rate **valid on the record's date** from the Employee's Hourly Rate
-    History, never today's rate. History edits re-cost affected records; an edit that would
-    leave a record without a rate is refused.
-  - No future dates; the Employee row is locked (`for_update`) during the 24 h check.
+  - Pay follows the employment contract: each Pay History row is Hourly (`hourly_rate`) or
+    Monthly (`monthly_salary`). `hourly_rate` on a record is the rate **valid on its date**,
+    never today's; 0 under monthly pay (the salary covers the hours). History edits re-cost
+    affected records; an edit that would leave a record without pay terms is refused.
+  - No future dates, and within the employment (Date of Joining to Relieving Date); the
+    Employee row is locked (`for_update`) during the 24 h check.
   - `cost = hours_worked × hourly_rate`, rounded with `self.precision("cost")`.
   - `hours_worked > 0`, and at most 24 h per employee per date, summed across *other*
     records (`name != self.name`, so an edit doesn't count itself).
 - **Reports** (`report/daily_hr_cost/`, `report/monthly_hr_cost/`) sum the **stored** `cost`. They must
-  never recompute from a current rate, because that would rewrite history.
+  never recompute from a current rate, because that would rewrite history. They add monthly
+  salaries at ÷ 30 per calendar day (`get_salary_costs`), within the employment and never
+  beyond today, read through `report/salaries.py` (pay access and User Permissions).
   - Each validates its filters (both dates required, from ≤ to).
   - Each returns `columns, data, None, chart, summary`, and `chart` is `None` when there's no
     data.

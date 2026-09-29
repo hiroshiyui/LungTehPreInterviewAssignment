@@ -5,6 +5,9 @@ import frappe
 from frappe import _
 from frappe.utils import add_months, flt, get_first_day, getdate
 
+from hr_cost.hr_cost.report.salaries import get_permitted_salary_costs
+from hr_cost.hr_cost.report.scope import employee_filter
+
 
 def execute(filters: dict | None = None):
 	"""Total HR cost per employee per month: one row per employee, one column
@@ -59,8 +62,10 @@ def get_columns(months: list) -> list[dict]:
 
 
 def get_data(filters: frappe._dict, months: list) -> tuple[list[dict], dict]:
-	"""One query, grouped by employee and calendar month, over the stored cost
-	(each Work Record is already costed at the rate valid on its date).
+	"""Each employee's HR cost per month: hourly wages from one query, grouped
+	by employee and calendar month, over the stored cost (each Work Record is
+	already costed at the rate valid on its date), plus monthly salaries, which
+	accrue at salary ÷ 30 per calendar day.
 
 	Like the daily report, the query runs with `ignore_permissions=False`, so
 	it honours the user's role, User Permissions and field permlevels.
@@ -68,8 +73,8 @@ def get_data(filters: frappe._dict, months: list) -> tuple[list[dict], dict]:
 	Returns the report rows, and the hours worked per month (for the
 	effective hourly rate chart)."""
 	query_filters = {"date": ["between", [getdate(filters.from_date), getdate(filters.to_date)]]}
-	if filters.employee:
-		query_filters["employee"] = filters.employee
+	if employees := employee_filter(filters):
+		query_filters["employee"] = employees
 
 	query = frappe.qb.get_query(
 		"Work Record",
@@ -86,24 +91,37 @@ def get_data(filters: frappe._dict, months: list) -> tuple[list[dict], dict]:
 		ignore_permissions=False,
 	)
 
-	rows = {}  # employee -> report row
-	hours = dict.fromkeys(months, 0.0)
-	for r in query.run(as_dict=True):
-		row = rows.setdefault(
-			r.employee,
+	def row_for(employee, employee_name):
+		return rows.setdefault(
+			employee,
 			frappe._dict(
-				employee=r.employee,
-				employee_name=r.employee_name,
+				employee=employee,
+				employee_name=employee_name,
 				hours_worked=0,
 				hr_cost=0,
 				**{month_field(m): 0 for m in months},
 			),
 		)
+
+	rows = {}  # employee -> report row
+	hours = dict.fromkeys(months, 0.0)
+	for r in query.run(as_dict=True):
+		row = row_for(r.employee, r.employee_name)
 		month = getdate(f"{r.year}-{r.month:02d}-01")
-		row[month_field(month)] = flt(r.hr_cost)
+		row[month_field(month)] += flt(r.hr_cost)
 		hours[month] += flt(r.hours_worked)
 		row.hours_worked += flt(r.hours_worked)
 		row.hr_cost += flt(r.hr_cost)
+
+	salaries, names = get_permitted_salary_costs(
+		getdate(filters.from_date), getdate(filters.to_date), filters.employee, filters.nationality
+	)
+	for employee, days in salaries.items():
+		# A salaried employee gets a row even without a Work Record in the range.
+		row = row_for(employee, names[employee])
+		for day, amount in days.items():
+			row[month_field(get_first_day(day))] += amount
+			row.hr_cost += amount
 	# By name, then ID, so namesakes stay apart and in a stable order.
 	return sorted(rows.values(), key=lambda row: (row.employee_name or "", row.employee)), hours
 
@@ -138,7 +156,8 @@ def get_chart(chart: str | None, data: list[dict], months: list, cost: dict, hou
 
 	if chart == "Effective Hourly Rate":
 		# Cost ÷ hours for each month: it rises with raises, and moves with who
-		# did the work. A month without work has no rate, so it's left out.
+		# did the work. Salaries count as cost, and salaried staff's logged hours
+		# as hours. A month without hours has no rate, so it's left out.
 		worked = [month for month in months if hours[month]]
 		return {
 			"data": {
@@ -171,8 +190,8 @@ def get_chart(chart: str | None, data: list[dict], months: list, cost: dict, hou
 
 def get_summary(data: list[dict], months: list, cost: dict) -> list[dict]:
 	total_cost = sum(row.hr_cost for row in data)
-	# Like the daily report, average over months with work: the default range is
-	# the whole year, and its months still to come would drag the average down.
+	# Average over months with any cost: the default range is the whole year,
+	# and its months still to come would drag the average down.
 	worked = [month for month in months if cost[month]]
 	summary = [
 		{"label": _("Total HR Cost"), "value": total_cost, "datatype": "Currency", "indicator": "Blue"},

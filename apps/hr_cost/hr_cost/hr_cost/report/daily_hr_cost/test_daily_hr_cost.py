@@ -79,3 +79,34 @@ class IntegrationTestDailyHRCost(IntegrationTestCase):
 		self.assertEqual(chart["data"]["labels"], ["01", "02"])  # one month: the day
 		_data, chart, _summary = self.run_report(to_date="2001-03-31")
 		self.assertEqual(chart["data"]["labels"], ["02-01", "02-02", "03-01"])
+
+	def test_salaries_accrue_every_day(self):
+		# 30000 a month is 1000 a day, weekends included, from the joining date.
+		make_employee("Test Salaried", monthly_salary=30000, date_of_joining="2001-02-01")
+		data, chart, summary = self.run_report(to_date="2001-02-04")
+		self.assertEqual(
+			[(row.wages, row.salaries, row.hr_cost) for row in data],
+			[(1600, 1000, 2600), (200, 1000, 1200), (0, 1000, 1000), (0, 1000, 1000)],
+		)
+		self.assertEqual(data[0].employees, 2)  # people at work, from Work Records
+		self.assertEqual(
+			[(d["name"], d["values"]) for d in chart["data"]["datasets"]],
+			[("Hourly Wages", [1600, 200, 0, 0]), ("Salaries", [1000, 1000, 1000, 1000])],
+		)
+		self.assertEqual(summary["Total HR Cost"], 5800)
+		self.assertEqual(summary["Days With Work"], 2)
+		self.assertEqual(summary["Average HR Cost / Day"], 1450)  # over the 4 days with cost
+
+	def test_salary_starts_on_the_joining_date(self):
+		make_employee("Test Late Joiner", monthly_salary=30000, date_of_joining="2001-02-03")
+		data, _chart, _summary = self.run_report(to_date="2001-02-04")
+		self.assertEqual([row.salaries for row in data], [0, 0, 1000, 1000])
+
+	def test_nationality_filter(self):
+		frappe.db.set_value("Employee", self.alice, "nationality", "Indonesia")
+		make_employee("Test Salaried", monthly_salary=30000, date_of_joining="2001-02-01", nationality="Indonesia")
+		data, _chart, summary = self.run_report(to_date="2001-02-02", nationality="Indonesia")
+		# Alice's wages (800, 200) plus the Indonesian salary; Bob isn't Indonesian.
+		self.assertEqual([(row.wages, row.salaries) for row in data], [(800, 1000), (200, 1000)])
+		data, _chart, _summary = self.run_report(nationality="Vietnam")
+		self.assertEqual(data, [])

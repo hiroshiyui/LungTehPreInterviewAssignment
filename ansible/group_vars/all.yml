@@ -50,5 +50,12 @@ bench_env:
 # ---------------------------------------------------------------------------
 app_name: hr_cost
 app_source_path: /vagrant/apps/hr_cost
+# Answers to Frappe's one-time setup wizard, given by provisioning so the site
+# opens on the desk. The currency is the one pay is shown in.
+site_setup:
+  language: English
+  country: Taiwan
+  timezone: Asia/Taipei
+  currency: TWD
 load_demo_data: true
 run_app_tests: true

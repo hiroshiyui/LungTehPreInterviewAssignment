@@ -12,6 +12,7 @@ from frappe.tests import IntegrationTestCase
 from hr_cost.hr_cost.doctype.employee.employee import get_hourly_rate_on
 from hr_cost.hr_cost.report.daily_hr_cost import daily_hr_cost
 from hr_cost.hr_cost.report.monthly_hr_cost import monthly_hr_cost
+from hr_cost.hr_cost.report.salaries import get_permitted_salary_costs
 from hr_cost.tests.utils import make_employee, make_user, make_work_record
 
 DAY = "2001-05-02"
@@ -78,6 +79,20 @@ class IntegrationTestPermissions(IntegrationTestCase):
 			with self.subTest(report=report, user=self.hr_manager), self.set_user(self.hr_manager):
 				self.assertTrue(frappe.get_doc("Report", report).is_permitted(self.hr_manager))
 				self.assertTrue(run_report(report, filters=RANGE)["result"])
+
+	def test_salaries_need_pay_access_and_honour_user_permissions(self):
+		carol = make_employee("Test Carol", monthly_salary=30000, date_of_joining="2001-05-01")
+		for user in (self.hr_user, self.system_manager):
+			with self.subTest(user=user), self.set_user(user):
+				self.assertRaises(frappe.PermissionError, get_permitted_salary_costs, "2001-05-01", "2001-05-31")
+		with self.set_user(self.hr_manager):
+			self.assertEqual(list(get_permitted_salary_costs("2001-05-01", "2001-05-31")[0]), [carol])
+		# Restricted to Bob, the manager doesn't see Carol's salary.
+		frappe.get_doc(
+			{"doctype": "User Permission", "user": self.hr_manager, "allow": "Employee", "for_value": self.bob}
+		).insert()
+		with self.set_user(self.hr_manager):
+			self.assertEqual(get_permitted_salary_costs("2001-05-01", "2001-05-31")[0], {})
 
 	def test_reports_honour_user_permissions(self):
 		# An HR Manager restricted to Bob sees only Bob's cost.

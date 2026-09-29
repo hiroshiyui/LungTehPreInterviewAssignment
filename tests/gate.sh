@@ -82,7 +82,7 @@ elif [[ "$MODE" == compose ]]; then
   api -X POST "$URL/api/method/login" -H 'Content-Type: application/json' \
     -d '{"usr":"Administrator","pwd":"admin"}' >/dev/null || fail "login"
   api -X POST "$URL/api/resource/Employee" -H 'Content-Type: application/json' \
-    -d '{"employee_name":"Gate Persistence","hourly_rate":123}' >/dev/null || fail "create employee"
+    -d '{"employee_name":"Gate Persistence","date_of_joining":"2026-01-01","hourly_rate":123}' >/dev/null || fail "create employee"
   echo "gate-$$" > "$LOG_DIR/gate.txt"
   file_url=$(api -X POST "$URL/api/method/upload_file" -F "file=@$LOG_DIR/gate.txt" -F is_private=0 \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["message"]["file_url"])') || fail "upload file"

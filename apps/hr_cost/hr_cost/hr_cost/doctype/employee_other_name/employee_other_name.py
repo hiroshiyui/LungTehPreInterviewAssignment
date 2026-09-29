@@ -5,7 +5,7 @@
 from frappe.model.document import Document
 
 
-class EmployeeHourlyRate(Document):
+class EmployeeOtherName(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -14,13 +14,11 @@ class EmployeeHourlyRate(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
-		hourly_rate: DF.Currency
-		monthly_salary: DF.Currency
+		other_name: DF.Data
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
-		pay_basis: DF.Literal["Hourly", "Monthly"]
-		valid_from: DF.Date | None
+		writing_system: DF.Literal["Latin", "Chinese", "Thai", "Vietnamese", "Burmese", "Khmer", "Lao", "Japanese", "Korean", "Other"]
 	# end: auto-generated types
 
-	_DOCTYPE_NAME = "Employee Hourly Rate"
+	_DOCTYPE_NAME = "Employee Other Name"

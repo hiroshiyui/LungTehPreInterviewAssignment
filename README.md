@@ -12,6 +12,25 @@ Everything is a reproducible build. Every version that affects the result is
 pinned, including the exact Frappe `develop` commit, and one command rebuilds
 the same environment from scratch.
 
+### What it looks like
+
+The **HR Cost workspace**: this month's cost and hours, this year's cost, and
+charts of where the cost goes. It is for the HR Manager role only.
+
+![The HR Cost workspace: number cards for HR cost this month, hours worked this month and HR cost this year, in TWD; a bar chart of cost per month stacked by employee; a bar chart of this month's daily cost, split into hourly wages and salaries; a donut of each employee's share of the cost; and a line of the effective hourly rate per month.](docs/images/workspace.png)
+
+| | |
+| --- | --- |
+| ![The Monthly HR Cost report: summary figures (total cost, total hours, employees, average cost per month, and September against August in red), a bar chart of cost per month stacked by employee, and a table with one row per employee and one column per month.](docs/images/monthly-report.png) | ![The Daily HR Cost report for September: summary figures, a bar chart of each day's cost with hourly wages and salaries stacked (weekends carry only salaries), and a table of employees, hours, hourly wages, salaries and total cost per date. Each date links to that day's Work Records.](docs/images/daily-report.png) |
+| **Monthly HR Cost**: one row per employee, one column per month, with a "Chart" picker (cost by employee, cost share, effective hourly rate). | **Daily HR Cost**: the assignment's report, the total HR cost for each day, hourly wages plus salaries. Click a date to see its Work Records. |
+| ![An Employee form for Bob Lin, paid by the hour: his current hourly rate, a Pay History with a base rate and a raise from 2026-09-01, a line chart of that history, and a Connections link to his Work Records.](docs/images/employee-form.png) | ![An Employee form for Nguyen Thi Huong from Vietnam, paid monthly: an orange notice that her work permit expires in 20 days, her nationality, her name in Vietnamese (Nguyễn Thị Hương) and Chinese (阮氏香), the work permit number and expiry, and pay basis Monthly with a monthly salary.](docs/images/employee-form-international.png) |
+| **Hourly pay**: each Work Record is costed at the rate valid on its date. | **Staff from many countries**: nationality, names in other writing systems, and a work permit reminder. Monthly pay accrues at ÷ 30 per calendar day. |
+| ![A Work Record for Bob Lin opened by the demo HR User: employee, date and hours worked are shown, and there is no hourly rate or cost.](docs/images/work-record-hr-user.png) | |
+| **Pay is confidential**: a Work Record as the *HR User* sees it, without rate or cost. | |
+
+These screenshots were taken as the demo users (see [chapter 5](#5-the-hr-cost-app)),
+on the demo data that provisioning loads.
+
 More documentation:
 
 - [docs/ops.md](docs/ops.md): run, stop, storage, backup and restore, scheduled backups, upgrades.
@@ -105,9 +124,10 @@ new SHA there (`git ls-remote https://github.com/frappe/frappe refs/heads/develo
 > `admin` as the password. The dots already in the password box are only a
 > placeholder.
 
-> **First login:** Frappe opens a one-time *Welcome* setup wizard (language,
-> country, time zone, currency) before the desk. Fill it in once per site;
-> the currency you pick is the one the pay figures are shown in.
+> **Setup wizard:** a new Frappe site asks once for its language, country,
+> time zone and currency. Provisioning answers it for you from `site_setup`
+> in `ansible/group_vars/all.yml` (English, Taiwan, Asia/Taipei, TWD), so you
+> land straight on the desk. The currency is the one pay is shown in.
 
 ---
 
@@ -180,7 +200,8 @@ Vagrant then runs `ansible/site.yml` inside the guest, with
 
 ```bash
 sudo apt-get install -y build-essential pkg-config git curl file ca-certificates gnupg acl \
-    libffi-dev libssl-dev libmariadb-dev mariadb-client redis-server cron rsync xz-utils python3-debian
+    libffi-dev libssl-dev libmariadb-dev mariadb-client redis-server cron rsync xz-utils python3-debian \
+    wkhtmltopdf fonts-noto-cjk fonts-noto-core   # PDF engine, and fonts for names in any script
 sudo systemctl disable --now redis-server     # bench starts its own redis processes
 echo 'fs.inotify.max_user_watches = 524288' | sudo tee /etc/sysctl.d/60-frappe-inotify.conf
 sudo sysctl --system                          # for the asset watcher
@@ -279,8 +300,16 @@ ln -s /vagrant/apps/hr_cost apps/hr_cost
 uv pip install --python env/bin/python -e apps/hr_cost
 echo hr_cost >> sites/apps.txt
 bench --site hrcost.localhost install-app hr_cost    # on later runs: bench migrate
+# answer Frappe's setup wizard (before any other user exists, see below)
+bench --site hrcost.localhost execute hr_cost.setup.complete_site_setup \
+  --kwargs '{"language": "English", "country": "Taiwan", "timezone": "Asia/Taipei", "currency": "TWD"}'
 bench --site hrcost.localhost execute hr_cost.demo.create_demo_data   # sample data
 ```
+
+The setup step answers the questions Frappe's setup wizard would ask on first
+login. It has to run before the demo users exist: once a site has any user
+besides Administrator, Frappe marks its wizard complete on the next migrate,
+without the answers.
 
 #### 3.3.10 Verify (role `verify`)
 
@@ -430,23 +459,37 @@ changes. Always use `down`, then `up -d --build`. The full details are in
 [`apps/hr_cost/README.md`](apps/hr_cost/README.md) has the full
 description. In short:
 
-* **Employee**: `employee_name` (Data, required), `hourly_rate` (Currency,
-  required, > 0), and an **Hourly Rate History** (dated rates). Named
-  `EMP-#####` and displayed by name in links.
+* **Employee**: `employee_name` (Data, required), `date_of_joining`
+  (required) and `relieving_date`, and **pay per the employment contract**:
+  `pay_basis` **Hourly** (`hourly_rate`, > 0) or **Monthly**
+  (`monthly_salary`, > 0), kept as a dated **Pay History**. For staff from
+  many countries: `nationality` (a Country), **names in other writing
+  systems** (the passport's Latin spelling, a Chinese name, the name in Thai,
+  …; `employee_name` stays the one shown everywhere), and the **work permit**
+  (number and expiry; saving warns from 30 days before it expires, and a Work
+  Record dated after it warns). Named `EMP-#####` and displayed by name in
+  links, which also show the ID; saving a second employee with the same name
+  warns. Its *Connections* link to its Work Records.
 * **Work Record**: `employee` (Link → Employee) with the fetched
-  `employee_name`, `date` (default today, never in the future), and
+  `employee_name` (kept current when the employee is renamed), `date`
+  (default today, never in the future, within the employment), and
   `hours_worked` (> 0, and at most 24 h per employee per day), plus read-only
   `hourly_rate` (the rate valid on that date) and `cost`, computed on save.
+  Under monthly pay both are 0: the salary covers the hours, so the record
+  logs hours only. Log one quickly from the list's
+  *Add* dialog, or many at once with Frappe's Data Import (as a System Manager
+  with HR Manager); imported rows go through the same rules.
 * **Daily HR Cost** (a Script Report on Work Record): one row per date with the
-  number of employees, the total hours and the **total HR cost**. It defaults
-  to the current month, can be filtered by employee, and shows a bar chart and
+  number of employees, the total hours, the hourly wages, the salaries and
+  the **total HR cost**. It defaults
+  to the current month, can be filtered by employee or nationality, and shows a bar chart and
   period totals (total cost, total hours, days with work, average cost per
   day). "Show days without work" adds zero rows, so the chart's time axis has
-  no gaps.
+  no gaps. Click a date to open that day's Work Records.
 * **Monthly HR Cost** (a Script Report on Work Record): the assignment's
   "calculate monthly". One row per employee and one column per month, with the
   employee's total hours and cost and a total row. It defaults to the current
-  year and can be filtered by employee.
+  year and can be filtered by employee or nationality.
 * **Charts for HR.** Each report has a "Chart" picker. Daily: HR cost, hours
   worked, or employees at work per day. Monthly: cost per month stacked by
   employee, each employee's share of the cost (donut), or the effective
@@ -455,15 +498,47 @@ description. In short:
   plots its Hourly Rate History.
 * **HR Cost workspace** (`/desk/hr-cost`, HR Manager only): number cards for
   this month's cost and hours and this year's cost, and the charts above.
+* **Download PDF**: a button on both report pages saves the current view as
+  an A4 PDF (landscape for Monthly), named after the report and period, to
+  print or attach to an email: title, period, summary figures, the table
+  with a total row, and who generated it when. The engine is `wkhtmltopdf`
+  (installed by the `base` role, with the Noto fonts, so names in Chinese,
+  Thai, Burmese, Khmer, Lao, Vietnamese and most other scripts print). Excel and CSV come from the report's own *Actions → Export*.
+
+**Languages.** Each user picks their own desk language under *My Settings →
+Language*: Frappe ships Vietnamese, Thai, Indonesian, Traditional Chinese and
+many more, so staff can use the desk in their own language. The app's own
+labels (field names, report titles) are in English until they're translated
+([todos](docs/todos.md)).
+
+**Demo users.** The demo data includes one user per HR role, so you can log
+in as each and compare what they see (password `demo` for both):
+
+| Log in as | Role | Sees |
+| --- | --- | --- |
+| `hr.manager@example.com` | HR Manager | everything: rates, costs, reports, the workspace |
+| `hr.user@example.com` | HR User | employees' names and Work Records, without rates or costs |
+
+Like `Administrator` / `admin`, these passwords are for this local tutorial
+site only, which listens on 127.0.0.1.
 
 Design decisions:
 
-* **Rates are dated, and each Work Record is costed at the rate valid on its
-  date.** A pay raise is a new dated row in the employee's history, so it never
+* **Pay follows the employment contract: hourly or monthly.** Under Taiwan's
+  labour law a worker is paid either by the hour or by the month, as the
+  contract says. Hourly pay is costed per Work Record. A monthly salary
+  accrues at **salary ÷ 30 per calendar day** (Taiwan's usual daily-wage
+  convention), weekends included, from the Date of Joining to the Relieving
+  Date and never beyond today. So a 31-day month costs 31/30 of the salary,
+  and February 28/30. A monthly-paid worker's Work Records log hours only.
+  Overtime pay isn't modelled yet ([todos](docs/todos.md)).
+* **Pay terms are dated, and each Work Record is costed at the rate valid on
+  its date.** A pay raise is a new dated row in the employee's history, so it never
   rewrites the cost of earlier work, and work entered late is still costed at
   the rate that applied on its day. Correcting a rate re-costs the affected
-  records. The cost is stored on each record, so both reports are simple
-  `GROUP BY` sums (by date, or by employee and month).
+  records. The hourly cost is stored on each record, so the reports sum it
+  with `GROUP BY` (by date, or by employee and month) and add the salaries
+  accrued in the same period.
 * **Pay is confidential.** Rates and costs are at permlevel 1, readable only by
   the **HR Manager** role. An **HR User** enters work records without seeing
   them, and a System Manager administers the site without them. Both reports

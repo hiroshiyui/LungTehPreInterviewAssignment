@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_bulk_edit": 1,
- "allow_rename": 1,
+ "allow_import": 1,
  "autoname": "format:WR-{#####}",
  "creation": "2026-09-29 08:41:31.955679",
  "doctype": "DocType",
@@ -64,7 +64,7 @@
    "permlevel": 1
   },
   {
-   "description": "The employee's rate valid on this record's date (from the Employee's Hourly Rate History).",
+   "description": "The employee's hourly rate valid on this record's date, from their Pay History. 0 under monthly pay: the salary covers the hours, so the record logs hours only.",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "label": "Hourly Rate",
@@ -87,9 +87,8 @@
   }
  ],
  "grid_page_length": 50,
- "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 11:03:21.859107",
+ "modified": "2026-09-29 12:42:56.804914",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Work Record",
@@ -101,6 +100,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -113,6 +113,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -133,6 +134,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "sort_field": "date",

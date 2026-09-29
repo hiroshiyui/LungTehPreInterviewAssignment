@@ -15,7 +15,12 @@ When you solve a new problem, add a row here.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| After login, a "Welcome" form asks for language, country, time zone and currency | Frappe's one-time setup wizard for a new site | fill it in once; the currency is what pay is shown in |
+| The browser console shows `Failed to execute 'removeChild' on 'Node'` on the HR Cost workspace | a race in Frappe's chart library: an old chart's resize observer fires after its widget redrew | harmless; the charts are drawn correctly |
+| "Download PDF" fails with `wkhtmltopdf` not found (or `No wkhtmltopdf executable found`) | the VM or image was built before the `base` role installed it | VirtualBox: `vagrant provision`; Podman: `podman compose down && podman compose up -d --build` (the image installs it) |
+| Names print as empty boxes in a PDF (Chinese, Thai, Burmese, Khmer, …) | no font for that script on the server | the `base` role installs `fonts-noto-cjk` and `fonts-noto-core`: re-provision or rebuild the image; for a script they miss, add its font package there |
+| `You do not have permission to access field: Employee.<field>` (e.g. `date_of_joining`) right after pulling new code | the code expects a field the site's database doesn't have yet: the site hasn't been migrated | Podman: `podman compose restart frappe` (every start migrates); VirtualBox: `vagrant provision`, or `bench --site hrcost.localhost migrate` in the VM |
+| After login, a "Welcome" form asks for language, country, time zone and currency | Frappe's setup wizard, on a site that provisioning hasn't set up (for example one made by hand) | fill it in once, or run `bench --site <site> execute hr_cost.setup.complete_site_setup --kwargs '…'` (see README 3.3.9) |
+| Amounts show `$` instead of TWD, and the country is empty | Frappe marked its setup wizard complete by itself (it does once any non-admin user exists), so nobody answered it | re-provision, or run `hr_cost.setup.complete_site_setup` as in README 3.3.9 |
 | `http://localhost:8000` doesn't load right after start | the first start is still creating the site or migrating | wait for `Running on http://…:8000` in the logs |
 | Page loads, but live updates / "realtime" don't work | host port 9000 is not reachable | keep 9000 free on the host; it can't be remapped (the browser connects to 9000) |
 | `Cannot run bench migrate without the services running` | the bench's redis isn't up | VirtualBox: `sudo systemctl start frappe-bench`; Podman: `podman compose up -d` (the redis services) |

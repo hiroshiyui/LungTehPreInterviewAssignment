@@ -2,6 +2,19 @@
 // For license information, please see license.txt
 
 frappe.query_reports["Monthly HR Cost"] = {
+	// "Download PDF": the current view as an A4 file named after the report and
+	// period (see report/pdf.py), to print or attach to an email.
+	onload(report) {
+		report.page.add_inner_button(__("Download PDF"), () => {
+			const params = new URLSearchParams({
+				report_name: report.report_name,
+				filters: JSON.stringify(report.get_filter_values()),
+			});
+			// Served as an attachment, so the page stays and the file is saved.
+			window.location.href = `/api/method/hr_cost.hr_cost.report.pdf.download_report_pdf?${params}`;
+		});
+	},
+
 	filters: [
 		{
 			fieldname: "from_date",
@@ -22,6 +35,12 @@ frappe.query_reports["Monthly HR Cost"] = {
 			label: __("Employee"),
 			fieldtype: "Link",
 			options: "Employee",
+		},
+		{
+			fieldname: "nationality",
+			label: __("Nationality"),
+			fieldtype: "Link",
+			options: "Country",
 		},
 		{
 			fieldname: "chart",

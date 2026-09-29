@@ -106,3 +106,18 @@ class IntegrationTestMonthlyHRCost(IntegrationTestCase):
 	def test_chart_labels_show_the_year_when_the_range_spans_years(self):
 		_columns, _rows, chart, _summary = self.run_report(from_date="2000-12-01")
 		self.assertEqual(chart["data"]["labels"], ["Dec 00", "Jan 01", "Feb 01", "Mar 01"])
+
+	def test_a_salaried_employee_costs_a_thirtieth_of_the_salary_per_day(self):
+		# No Work Records, still a row: Jan 31 days, Feb 28, Mar 31 (÷ 30 each).
+		dora = make_employee("Test Dora", monthly_salary=30000, date_of_joining="2001-01-01")
+		_columns, rows, _chart, summary = self.run_report()
+		row = rows[dora]
+		self.assertEqual((row.m_2001_01, row.m_2001_02, row.m_2001_03), (31000, 28000, 31000))
+		self.assertEqual((row.hr_cost, row.hours_worked), (90000, 0))
+		self.assertEqual(summary["Total HR Cost"], 3800 + 90000)
+
+	def test_nationality_filter(self):
+		frappe.db.set_value("Employee", self.bob, "nationality", "Vietnam")
+		_columns, rows, _chart, summary = self.run_report(nationality="Vietnam")
+		self.assertEqual(list(rows), [self.bob])
+		self.assertEqual(summary["Total HR Cost"], 2000)

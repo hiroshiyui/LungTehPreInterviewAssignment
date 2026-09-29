@@ -117,6 +117,8 @@ This skill covers security only. For correctness, tests and docs, use `code-revi
     to 1, so every right must be set explicitly (check the JSON, not just the intent).
 - **Queries that return pay**: the reports use `frappe.qb.get_query(...,
   ignore_permissions=False)`, which applies roles, User Permissions and permlevels.
+  Salaries come through `report/salaries.py`, which refuses users without permlevel 1
+  read on Employee and lists employees with `frappe.get_list` (User Permissions).
   Plain `frappe.qb.from_()` and `frappe.get_all` **bypass all three**: they're fine
   inside a controller (for example, costing a record), but a finding wherever results
   reach a user who may not see pay.

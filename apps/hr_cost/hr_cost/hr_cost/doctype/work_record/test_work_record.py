@@ -1,7 +1,12 @@
 # Copyright (c) 2026, Hui-Hong You and contributors
 # For license information, please see license.txt
 
+import os
+import tempfile
+from unittest.mock import patch
+
 import frappe
+from frappe.core.doctype.data_import.importer import Importer
 from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, today
 
@@ -71,3 +76,48 @@ class IntegrationTestWorkRecord(IntegrationTestCase):
 			"SHOW INDEX FROM `tabWork Record` WHERE Column_name = 'date' AND Seq_in_index = 1"
 		)
 		self.assertTrue(leading_date)
+
+	def test_data_import_goes_through_the_same_rules(self):
+		# Bulk logging via Data Import inserts each row like the form does: the
+		# server costs it (a Cost column is ignored), and the 24 h cap holds.
+		rows = [
+			"Employee,Date,Hours Worked,Cost",
+			f"{self.employee},2001-01-20,8,1",
+			f"{self.employee},2001-01-20,20,1",  # 28 h on one day: refused
+		]
+		with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as f:
+			f.write("\n".join(rows))
+		try:
+			data_import = frappe.new_doc("Data Import")
+			data_import.update({"reference_doctype": "Work Record", "import_type": "Insert New Records"})
+			# console=True reads a local path, as `bench data-import` does; the Desk
+			# passes an uploaded File instead, through the same insert logic.
+			# The Importer commits after each good row and rolls back after a bad
+			# one. Keep it all inside the test's transaction, so tearDown's rollback
+			# still removes everything. (The bad row fails in validate(), before
+			# anything is written, so skipping its rollback loses nothing.)
+			with patch.object(frappe.db, "commit"), patch.object(frappe.db, "rollback"):
+				Importer("Work Record", file_path=f.name, data_import=data_import, console=True).import_data()
+		finally:
+			os.unlink(f.name)
+		imported = frappe.get_all("Work Record", {"employee": self.employee, "date": "2001-01-20"}, ["hours_worked", "cost"])
+		self.assertEqual([(r.hours_worked, r.cost) for r in imported], [(8, 2000)])
+
+	def test_monthly_paid_work_logs_hours_only(self):
+		monthly = make_employee("Test Pat", monthly_salary=36000)
+		record = make_work_record(monthly, DAY, 9)
+		self.assertEqual((record.hours_worked, record.hourly_rate, record.cost), (9, 0, 0))
+
+	def test_date_must_be_within_employment(self):
+		employee = make_employee("Test Quinn", 200, date_of_joining="2001-01-10", relieving_date="2001-01-20")
+		self.assertRaises(frappe.ValidationError, make_work_record, employee, "2001-01-09", 8)
+		self.assertRaises(frappe.ValidationError, make_work_record, employee, "2001-01-21", 8)
+		make_work_record(employee, "2001-01-10", 8)  # the first and last days are fine
+		make_work_record(employee, "2001-01-20", 8)
+
+	def test_work_after_the_permit_expired_is_recorded_with_a_warning(self):
+		employee = make_employee("Test Rizal", 200, work_permit_expiry="2001-01-14")
+		frappe.clear_messages()
+		record = make_work_record(employee, DAY, 8)  # the 15th
+		self.assertEqual(record.cost, 1600)
+		self.assertIn("work permit expired", " ".join(str(m) for m in frappe.message_log))

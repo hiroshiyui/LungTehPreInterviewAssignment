@@ -88,11 +88,15 @@ reload the page.
   a Document Type one on Work Record: that way it inherits the reports'
   permission checks. To check a chart by eye, open it in a browser; the
   unit tests cover its data.
+- **README screenshots** (`docs/images/`) are taken at 1400 px wide as the
+  demo users, on the demo data. Retake them when the UI they show changes.
 - Business rules live on the **server** (`validate()`). The client script
   (`work_record.js`) only previews values.
-- A Work Record's rate is the one **valid on its date**, from the employee's
-  Hourly Rate History (`get_hourly_rate` in `employee.py`), never the current
-  rate. The reports sum the **stored** `cost`; history edits re-cost records
+- Pay follows the employment contract, **hourly or monthly**. A Work
+  Record's rate is the one **valid on its date**, from the employee's Pay
+  History (`get_hourly_rate` in `employee.py`), never the current rate; under
+  monthly pay it's 0. Salaries accrue at ÷ 30 per calendar day
+  (`get_salary_costs`) and the reports add them. The reports sum the **stored** `cost`; history edits re-cost records
   through `recalculate_work_records`.
 - Schema changes that affect existing data ship with a patch in
   `hr_cost/patches/` (listed in `patches.txt`), plus a test for it.
@@ -112,7 +116,12 @@ Where things are:
 | `apps/hr_cost/hr_cost/hr_cost/report/daily_hr_cost/` | Daily HR Cost: the Script Report (py + js filters) + tests |
 | `apps/hr_cost/hr_cost/hr_cost/report/monthly_hr_cost/` | Monthly HR Cost: employees × months, same layout |
 | `apps/hr_cost/hr_cost/hr_cost/workspace/`, `dashboard_chart/`, `number_card/` | the HR Cost workspace and its charts and cards (all Report-based) |
-| `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning; includes a raise) |
+| `apps/hr_cost/hr_cost/hr_cost/report/pdf.py`, `report_pdf.html` | the reports' "Download PDF" (server-rendered A4, wkhtmltopdf) |
+| `apps/hr_cost/hr_cost/hr_cost/report/scope.py` | the reports' Employee and Nationality filters, as one permission-aware employee list |
+| `apps/hr_cost/hr_cost/hr_cost/doctype/employee_other_name/` | names in other writing systems (child DocType) |
+| `apps/hr_cost/hr_cost/hr_cost/report/salaries.py` | monthly salaries for both reports, with the pay-access and User Permission checks |
+| `apps/hr_cost/hr_cost/setup.py` | answers Frappe's setup wizard (run by provisioning, before the demo users) |
+| `apps/hr_cost/hr_cost/demo.py` | demo data (run by provisioning): hourly staff with a raise, a salaried employee, one user per HR role |
 | `apps/hr_cost/hr_cost/patches/` | data migrations run by `bench migrate` |
 | `apps/hr_cost/hr_cost/fixtures/role.json` | the HR Manager and HR User roles (`bench export-fixtures`) |
 | `apps/hr_cost/hr_cost/tests/` | shared test helpers; demo, patch and permission tests |

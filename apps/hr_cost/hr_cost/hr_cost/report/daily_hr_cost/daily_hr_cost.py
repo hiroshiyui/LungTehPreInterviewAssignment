@@ -6,9 +6,14 @@ from frappe import _
 from frappe.query_builder.functions import Count
 from frappe.utils import add_days, flt, getdate
 
+from hr_cost.hr_cost.report.salaries import get_permitted_salary_costs
+from hr_cost.hr_cost.report.scope import employee_filter
+
 
 def execute(filters: dict | None = None):
-	"""Total HR cost (hours worked x hourly rate) per day, with period totals."""
+	"""Total HR cost per day, with period totals: hourly wages (hours worked ×
+	hourly rate, stored on each Work Record) plus monthly salaries, which
+	accrue at salary ÷ 30 per calendar day."""
 	filters = frappe._dict(filters or {})
 	validate_filters(filters)
 
@@ -30,11 +35,33 @@ def get_columns() -> list[dict]:
 		{"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 120},
 		{"label": _("Employees"), "fieldname": "employees", "fieldtype": "Int", "width": 110},
 		{"label": _("Hours Worked"), "fieldname": "hours_worked", "fieldtype": "Float", "width": 130},
+		{"label": _("Hourly Wages"), "fieldname": "wages", "fieldtype": "Currency", "width": 140},
+		{"label": _("Salaries"), "fieldname": "salaries", "fieldtype": "Currency", "width": 140},
 		{"label": _("Total HR Cost"), "fieldname": "hr_cost", "fieldtype": "Currency", "width": 160},
 	]
 
 
 def get_data(filters: frappe._dict) -> list[dict]:
+	"""Hourly wages and salaries per date: one row per date with either."""
+	rows = {row.date: row for row in get_wages(filters)}
+	salaries, _names = get_permitted_salary_costs(
+		getdate(filters.from_date), getdate(filters.to_date), filters.employee, filters.nationality
+	)
+	for days in salaries.values():
+		for day, amount in days.items():
+			row = rows.setdefault(day, empty_row(day))
+			row.salaries = flt(row.salaries) + amount
+	for row in rows.values():
+		row.salaries = flt(row.salaries)
+		row.hr_cost = flt(row.wages) + row.salaries
+	return sorted(rows.values(), key=lambda row: row.date)
+
+
+def empty_row(day) -> frappe._dict:
+	return frappe._dict(date=day, employees=0, hours_worked=0, wages=0, salaries=0, hr_cost=0)
+
+
+def get_wages(filters: frappe._dict) -> list[dict]:
 	"""Sum the stored cost per date, as the current user is allowed to see it.
 
 	`ignore_permissions=False` makes Frappe check the user's role, apply their
@@ -42,15 +69,15 @@ def get_data(filters: frappe._dict) -> list[dict]:
 	user without access to its permlevel. Plain `frappe.qb.from_()` does none
 	of that."""
 	query_filters = {"date": ["between", [getdate(filters.from_date), getdate(filters.to_date)]]}
-	if filters.employee:
-		query_filters["employee"] = filters.employee
+	if employees := employee_filter(filters):
+		query_filters["employee"] = employees
 
 	query = frappe.qb.get_query(
 		"Work Record",
 		fields=[
 			"date",
 			{"SUM": "hours_worked", "as": "hours_worked"},
-			{"SUM": "cost", "as": "hr_cost"},
+			{"SUM": "cost", "as": "wages"},
 		],
 		filters=query_filters,
 		group_by="date",
@@ -70,9 +97,7 @@ def fill_empty_days(data: list[dict], from_date, to_date) -> list[dict]:
 	by_date = {row.date: row for row in data}
 	filled, day = [], from_date
 	while day <= to_date:
-		filled.append(
-			by_date.get(day) or frappe._dict(date=day, employees=0, hours_worked=0, hr_cost=0)
-		)
+		filled.append(by_date.get(day) or empty_row(day))
 		day = add_days(day, 1)
 	return filled
 
@@ -102,9 +127,21 @@ def get_chart(chart: str | None, data: list[dict]) -> dict | None:
 	if chart not in CHARTS:
 		frappe.throw(_("Unknown chart: {0}").format(chart))
 	field, chart_type, fieldtype = CHARTS[chart]
+	labels = [chart_label(row.date, data) for row in data]
+	if chart == "HR Cost":
+		# Stack wages and salaries, so each bar shows what the day's cost is made of.
+		datasets = [{"name": _("Hourly Wages"), "values": [flt(row.wages) for row in data]}]
+		if any(row.salaries for row in data):
+			datasets.append({"name": _("Salaries"), "values": [flt(row.salaries) for row in data]})
+		return {
+			"data": {"labels": labels, "datasets": datasets},
+			"type": "bar",
+			"barOptions": {"stacked": 1},
+			"fieldtype": fieldtype,
+		}
 	return {
 		"data": {
-			"labels": [chart_label(row.date, data) for row in data],
+			"labels": labels,
 			"datasets": [{"name": _(chart), "values": [flt(row[field]) for row in data]}],
 		},
 		"type": chart_type,
@@ -116,13 +153,16 @@ def get_summary(data: list[dict]) -> list[dict]:
 	total_cost = sum(flt(row.hr_cost) for row in data)
 	total_hours = sum(flt(row.hours_worked) for row in data)
 	days = sum(1 for row in data if row.hours_worked)  # zero rows aren't days with work
+	# Salaries cost every calendar day, weekends included, so average over the
+	# days with any cost, not only the days with work.
+	days_with_cost = sum(1 for row in data if row.hr_cost)
 	return [
 		{"label": _("Total HR Cost"), "value": total_cost, "datatype": "Currency", "indicator": "Blue"},
 		{"label": _("Total Hours"), "value": total_hours, "datatype": "Float", "indicator": "Green"},
 		{"label": _("Days With Work"), "value": days, "datatype": "Int", "indicator": "Grey"},
 		{
 			"label": _("Average HR Cost / Day"),
-			"value": total_cost / days if days else 0,
+			"value": total_cost / days_with_cost if days_with_cost else 0,
 			"datatype": "Currency",
 			"indicator": "Grey",
 		},
