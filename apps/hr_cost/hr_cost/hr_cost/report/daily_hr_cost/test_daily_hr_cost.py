@@ -1,0 +1,55 @@
+# Copyright (c) 2026, Hui-Hong You and contributors
+# For license information, please see license.txt
+
+import frappe
+from frappe.tests import IntegrationTestCase
+from frappe.utils import getdate
+
+from hr_cost.hr_cost.report.daily_hr_cost.daily_hr_cost import execute
+from hr_cost.tests.utils import make_employee, make_work_record
+
+
+class IntegrationTestDailyHRCost(IntegrationTestCase):
+	def setUp(self):
+		self.alice = make_employee("Test Alice", 100)
+		self.bob = make_employee("Test Bob", 200)
+		make_work_record(self.alice, "2001-02-01", 8)  # 800
+		make_work_record(self.bob, "2001-02-01", 4)  # 800
+		make_work_record(self.alice, "2001-02-02", 2)  # 200
+		make_work_record(self.bob, "2001-03-01", 8)  # outside the range below
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def run_report(self, **filters):
+		filters = {"from_date": "2001-02-01", "to_date": "2001-02-28", **filters}
+		_columns, data, _message, chart, summary = execute(filters)
+		return data, chart, {s["label"]: s["value"] for s in summary}
+
+	def test_totals_per_day(self):
+		data, chart, summary = self.run_report()
+		rows = {row.date: row for row in data}
+
+		self.assertEqual(list(rows), [getdate("2001-02-01"), getdate("2001-02-02")])
+		self.assertEqual(rows[getdate("2001-02-01")].hr_cost, 1600)
+		self.assertEqual(rows[getdate("2001-02-01")].hours_worked, 12)
+		self.assertEqual(rows[getdate("2001-02-01")].employees, 2)
+		self.assertEqual(rows[getdate("2001-02-02")].hr_cost, 200)
+
+		self.assertEqual(chart["data"]["datasets"][0]["values"], [1600, 200])
+		self.assertEqual(summary["Total HR Cost"], 1800)
+		self.assertEqual(summary["Days With Work"], 2)
+
+	def test_employee_filter(self):
+		data, _chart, summary = self.run_report(employee=self.bob)
+		self.assertEqual(len(data), 1)
+		self.assertEqual(summary["Total HR Cost"], 800)
+
+	def test_empty_range(self):
+		data, chart, summary = self.run_report(from_date="1990-01-01", to_date="1990-01-31")
+		self.assertEqual(data, [])
+		self.assertIsNone(chart)
+		self.assertEqual(summary["Total HR Cost"], 0)
+
+	def test_invalid_range(self):
+		self.assertRaises(frappe.ValidationError, execute, {"from_date": "2001-02-02", "to_date": "2001-02-01"})
