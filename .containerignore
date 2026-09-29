@@ -1,0 +1,7 @@
+# The frappe image only needs scripts/ and ansible/; the app is bind-mounted.
+.git
+.vagrant
+.claude
+apps
+tests
+**/__pycache__

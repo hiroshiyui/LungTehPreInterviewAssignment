@@ -1,0 +1,75 @@
+# Container alternative to the Vagrant VM:
+#
+#   podman compose up -d --build     # first build ~10 min (bench init)
+#   → http://localhost:8000  (Administrator / admin)
+#
+# Storage: all state lives in two named volumes, so containers can be
+# recreated (or the image rebuilt) without losing anything:
+#   db-data    MariaDB datadir (the site's database)
+#   site-data  sites/<site>: site_config.json, uploaded public/private files,
+#              backups
+# `podman compose down` keeps them; `podman compose down -v` wipes them.
+# Both must always be kept or wiped *together*.
+name: frappe-dev
+
+x-env: &env
+  SITE_NAME: hrcost.localhost          # also the site-data mount path below
+  DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-frappe}   # development only; ports bind to 127.0.0.1
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+
+services:
+  mariadb:
+    image: docker.io/library/mariadb:10.11
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --innodb-file-per-table=1
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-frappe}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+
+  redis-cache:
+    image: docker.io/library/redis:7.2-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]   # a cache: no persistence
+    restart: unless-stopped
+
+  redis-queue:
+    image: docker.io/library/redis:7.2-alpine
+    volumes:
+      - queue-data:/data               # keep queued background jobs across restarts
+    restart: unless-stopped
+
+  frappe:
+    build:
+      context: .
+      dockerfile: compose/Containerfile
+    image: localhost/frappe-dev:latest
+    depends_on: [mariadb, redis-cache, redis-queue]
+    environment:
+      <<: *env
+      DB_HOST: mariadb
+    # Map the container's frappe user (uid 1000) to the host user, so files
+    # written into the bind-mounted repo (DocType JSON exported in developer
+    # mode) belong to you. Podman-specific.
+    userns_mode: keep-id:uid=1000,gid=1000
+    user: root                         # the entrypoint drops to `frappe`
+    volumes:
+      - .:/workspace                   # repo: the app is symlinked from here
+      - site-data:/home/frappe/frappe-bench/sites/hrcost.localhost
+    ports:
+      - "127.0.0.1:${FRAPPE_HOST_PORT:-8000}:8000"   # web
+      # realtime: browsers expect 9000 (socketio_port); override only for tests
+      - "127.0.0.1:${FRAPPE_REALTIME_PORT:-9000}:9000"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  site-data:
+  queue-data:
