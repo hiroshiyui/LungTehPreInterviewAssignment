@@ -9,7 +9,9 @@
  "engine": "InnoDB",
  "field_order": [
   "employee_name",
-  "hourly_rate"
+  "hourly_rate",
+  "section_break_rates",
+  "hourly_rates"
  ],
  "fields": [
   {
@@ -22,18 +24,32 @@
    "reqd": 1
   },
   {
+   "description": "For a new employee, the starting rate. Afterwards it shows the latest rate: change rates by adding a row to Hourly Rate History.",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Hourly Rate",
    "non_negative": 1,
+   "read_only_depends_on": "eval:!doc.__islocal",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_rates",
+   "fieldtype": "Section Break",
+   "label": "Hourly Rate History"
+  },
+  {
+   "description": "Each Work Record is costed at the rate valid on its date.",
+   "fieldname": "hourly_rates",
+   "fieldtype": "Table",
+   "label": "Hourly Rate History",
+   "options": "Employee Hourly Rate"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 08:41:31.731170",
+ "modified": "2026-09-29 10:24:23.099844",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Employee",

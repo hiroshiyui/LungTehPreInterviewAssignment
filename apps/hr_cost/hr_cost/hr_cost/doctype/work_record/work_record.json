@@ -46,7 +46,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "hours_worked",
@@ -62,7 +63,7 @@
    "label": "Cost"
   },
   {
-   "description": "Copied from the Employee when the record is created, so later rate changes do not rewrite history.",
+   "description": "The employee's rate valid on this record's date (from the Employee's Hourly Rate History).",
    "fieldname": "hourly_rate",
    "fieldtype": "Currency",
    "label": "Hourly Rate",
@@ -84,7 +85,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 08:41:31.955679",
+ "modified": "2026-09-29 10:24:23.193004",
  "modified_by": "Administrator",
  "module": "HR Cost",
  "name": "Work Record",

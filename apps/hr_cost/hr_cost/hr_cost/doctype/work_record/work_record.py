@@ -5,7 +5,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder.functions import Sum
-from frappe.utils import flt
+from frappe.utils import flt, getdate, today
+
+from hr_cost.hr_cost.doctype.employee.employee import get_hourly_rate
 
 MAX_HOURS_PER_DAY = 24
 
@@ -30,13 +32,24 @@ class WorkRecord(Document):
 	_DOCTYPE_NAME = "Work Record"
 
 	def validate(self):
+		self.validate_date()
 		self.validate_hours_worked()
 		self.set_hourly_rate()
 		self.cost = flt(flt(self.hours_worked) * flt(self.hourly_rate), self.precision("cost"))
 
+	def validate_date(self):
+		# Otherwise future costs would already show up in this month's report.
+		if self.date and getdate(self.date) > getdate(today()):
+			frappe.throw(_("Date cannot be in the future."))
+
 	def validate_hours_worked(self):
 		if flt(self.hours_worked) <= 0:
 			frappe.throw(_("Hours Worked must be greater than zero."))
+
+		# Lock the employee's row until this transaction ends, so two saves for
+		# the same employee take turns: without it, both could read the old total
+		# below and together exceed the daily limit.
+		frappe.db.get_value("Employee", self.employee, "name", for_update=True)
 
 		wr = frappe.qb.DocType("Work Record")
 		already_logged = (
@@ -56,7 +69,21 @@ class WorkRecord(Document):
 			)
 
 	def set_hourly_rate(self):
-		# Snapshot the employee's rate when the record is created (or re-assigned),
-		# so a later raise does not change the cost of work already done.
-		if self.is_new() or self.has_value_changed("employee") or not self.hourly_rate:
-			self.hourly_rate = frappe.db.get_value("Employee", self.employee, "hourly_rate")
+		# The rate valid on the *work* date, not today's: a record entered late,
+		# after a raise, is still costed at the rate that applied on that day.
+		if not self.employee or not self.date:
+			return  # the mandatory-field check reports these
+		rate = get_hourly_rate(self.employee, self.date)
+		if rate is None:
+			frappe.throw(
+				_("{0} has no hourly rate valid on {1}.").format(
+					self.employee_name or self.employee, frappe.format(self.date, "Date")
+				)
+			)
+		self.hourly_rate = rate
+
+
+def on_doctype_update():
+	"""Called by `bench migrate`. The 24 h check filters by employee and date on
+	every save; Frappe's JSON can only declare single-column indexes."""
+	frappe.db.add_index("Work Record", ["employee", "date"])

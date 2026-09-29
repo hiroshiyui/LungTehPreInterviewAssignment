@@ -1,16 +1,32 @@
 // Copyright (c) 2026, Hui-Hong You and contributors
 // For license information, please see license.txt
 
-// Preview the cost while editing; the server recalculates it on save.
+// Preview the rate and cost while editing; the server recalculates both on save.
 frappe.ui.form.on("Work Record", {
-	async employee(frm) {
-		if (!frm.doc.employee) return;
-		const { message } = await frappe.db.get_value("Employee", frm.doc.employee, "hourly_rate");
-		await frm.set_value("hourly_rate", message.hourly_rate);
-		frm.trigger("calculate_cost");
+	employee(frm) {
+		frm.trigger("fetch_hourly_rate");
+	},
+
+	date(frm) {
+		frm.trigger("fetch_hourly_rate");
 	},
 
 	hours_worked(frm) {
+		frm.trigger("calculate_cost");
+	},
+
+	async fetch_hourly_rate(frm) {
+		if (!frm.doc.employee || !frm.doc.date) {
+			// No employee or date, no rate: don't leave a stale preview.
+			await frm.set_value({ hourly_rate: 0, cost: 0 });
+			return;
+		}
+		// The rate valid on the record's date, from the Hourly Rate History.
+		const { message } = await frappe.call({
+			method: "hr_cost.hr_cost.doctype.employee.employee.get_hourly_rate_on",
+			args: { employee: frm.doc.employee, date: frm.doc.date },
+		});
+		await frm.set_value("hourly_rate", message || 0);
 		frm.trigger("calculate_cost");
 	},
 

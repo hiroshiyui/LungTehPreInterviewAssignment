@@ -16,11 +16,14 @@ DEMO_EMPLOYEES = (
 	("Bob Lin", 380),
 	("Carol Wang", 520),
 )
+BOB_RAISE = 420
 
 
 def create_demo_data() -> dict:
 	"""Create demo employees and weekday work records from the start of last
-	month until today. Does nothing if the demo employees already exist."""
+	month until today. Bob gets a raise on the 1st of this month, so the report
+	shows the rate history at work. Does nothing if the demo employees already
+	exist. `bench execute` commits; tests roll back."""
 	if frappe.db.exists("Employee", {"employee_name": DEMO_EMPLOYEES[0][0]}):
 		return {"created": 0}
 
@@ -28,6 +31,10 @@ def create_demo_data() -> dict:
 		frappe.get_doc({"doctype": "Employee", "employee_name": name, "hourly_rate": rate}).insert().name
 		for name, rate in DEMO_EMPLOYEES
 	]
+
+	bob = frappe.get_doc("Employee", employees[1])
+	bob.append("hourly_rates", {"valid_from": get_first_day(today()), "hourly_rate": BOB_RAISE})
+	bob.save()
 
 	rng = random.Random(42)
 	created = 0
@@ -46,5 +53,4 @@ def create_demo_data() -> dict:
 				created += 1
 		day = add_days(day, 1)
 
-	frappe.db.commit()
 	return {"created": created}
