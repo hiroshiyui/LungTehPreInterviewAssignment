@@ -14,16 +14,18 @@
     update_cache: true
   when: nodejs_repo is changed
 
-- name: Install Node.js
+- name: Install Node.js {{ nodejs_version }}
   ansible.builtin.apt:
-    name: nodejs
+    name: "nodejs={{ nodejs_version }}"
     state: present
+    allow_downgrade: true   # moving the pin back must work too
 
-- name: Verify the installed Node.js major version
+- name: Verify the installed Node.js version
   ansible.builtin.command: node --version
   register: nodejs_version_check
   changed_when: false
-  failed_when: not nodejs_version_check.stdout.startswith('v' ~ nodejs_major ~ '.')
+  # 24.21.0-1nodesource1 installs node v24.21.0
+  failed_when: nodejs_version_check.stdout != 'v' ~ nodejs_version.split('-')[0]
 
 - name: Check installed yarn version
   ansible.builtin.command: yarn --version

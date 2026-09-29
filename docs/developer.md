@@ -144,6 +144,13 @@ Where things are:
 - In Podman, the image build runs roles `base,nodejs,bench`, and the entrypoint
   runs `site,app`. A new role must be placed in one of those groups (by tag)
   or be skipped via `deploy_target`.
+- **Pins.** Every input is pinned: image digests (`compose.yaml`, both
+  Containerfiles), `group_vars` (including `frappe_commit` and the exact
+  `nodejs_version`) and Frappe's Python packages
+  (`roles/bench/files/python-constraints.txt`, which the `verify` role checks).
+  After moving `frappe_commit`, regenerate the constraints:
+  `tests/gate.sh && scripts/freeze-python-deps.sh && tests/gate.sh`. Ubuntu's apt
+  packages deliberately follow the archive, so they get security updates.
 - Changing anything under `ansible/` invalidates the image's `COPY ansible`
   layer, so the next `podman compose up --build` re-runs `bench init` (about
   6–10 minutes).

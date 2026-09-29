@@ -5,6 +5,9 @@
 uv_version: "0.12.20"            # https://github.com/astral-sh/uv/releases
 python_version: "3.14"           # frappe develop: requires-python >=3.14,<3.15
 nodejs_major: 24                 # frappe develop: engines.node >=24
+# The exact NodeSource package; its repo keeps older versions installable.
+# `apt-cache madison nodejs` lists them.
+nodejs_version: "24.21.0-1nodesource1"
 yarn_version: "1.22.22"
 bench_version: "5.31.0"          # frappe-bench CLI (PyPI)
 
@@ -32,6 +35,8 @@ bench_name: frappe-bench
 bench_path: "{{ frappe_home }}/{{ bench_name }}"
 bench_bin: "{{ frappe_home }}/.local/bin/bench"
 frappe_src_path: "{{ frappe_home }}/src/frappe"
+# Where the bench role puts roles/bench/files/python-constraints.txt.
+python_constraints_path: "{{ frappe_home }}/python-constraints.txt"
 
 site_name: hrcost.localhost
 # Development-only credentials; this VM is bound to 127.0.0.1 on the host.

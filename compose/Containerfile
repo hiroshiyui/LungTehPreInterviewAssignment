@@ -4,7 +4,9 @@
 # nodejs, bench), with vars/container.yml switching off the VM-only parts
 # (systemd service, local MariaDB/redis). All versions come from
 # ansible/group_vars/all.yml and ansible/requirements.txt.
-FROM docker.io/library/ubuntu:24.04
+# tag@digest: the digest is what's pulled (see compose.yaml); keep it in step
+# with tests/container/Containerfile.
+FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \

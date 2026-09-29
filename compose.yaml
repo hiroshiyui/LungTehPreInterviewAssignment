@@ -10,6 +10,10 @@
 #               key), uploaded public/private files
 #   queue-data  the redis job queue
 # Backups (scripts/backup.sh) go to ./backups on the host, outside the volumes.
+#
+# Images are pinned as tag@digest: the digest (a multi-arch index, so amd64
+# and arm64 hosts both work) is what's pulled; the tag says what it is. A tag
+# alone can be re-pointed upstream at any time.
 # `podman compose down` keeps the volumes; `podman compose down -v` wipes them.
 # db-data and site-data must always be kept or wiped *together*.
 name: frappe-dev
@@ -23,7 +27,7 @@ x-env: &env
 
 services:
   mariadb:
-    image: docker.io/library/mariadb:10.11
+    image: docker.io/library/mariadb:10.11@sha256:7f22313fc130a377a44999965bcb0a08dd5b21e8502824c1b864f792f9bc66ab
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -40,7 +44,7 @@ services:
     restart: unless-stopped
 
   redis-cache:
-    image: docker.io/library/redis:7.2-alpine
+    image: docker.io/library/redis:7.2-alpine@sha256:29e8589c3f9ba699b5f7aa4b3c7733c58852a3626439e619aa0ee78de08c6ca0
     command: ["redis-server", "--save", "", "--appendonly", "no"]   # a cache: no persistence
     # The redis image declares a /data volume; without this, every recreated
     # container would leave an orphaned anonymous volume behind.
@@ -48,7 +52,7 @@ services:
     restart: unless-stopped
 
   redis-queue:
-    image: docker.io/library/redis:7.2-alpine
+    image: docker.io/library/redis:7.2-alpine@sha256:29e8589c3f9ba699b5f7aa4b3c7733c58852a3626439e619aa0ee78de08c6ca0
     volumes:
       - queue-data:/data               # keep queued background jobs across restarts
     restart: unless-stopped

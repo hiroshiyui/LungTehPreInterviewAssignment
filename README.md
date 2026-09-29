@@ -93,7 +93,9 @@ places where the two solutions differ.
 | frappe-bench | **5.31.0** | `group_vars/all.yml` | Frappe's CLI |
 | Python | **3.14** (3.14.7 via uv) | `group_vars/all.yml` | Frappe develop requires `>=3.14,<3.15`; Ubuntu ships 3.12 |
 | uv | **0.12.20** | `group_vars/all.yml` | installs Python 3.14 and bench, and builds the bench venv (checksum-verified download) |
-| Node.js | **24.x** (24.21.0 at time of writing, NodeSource) | `group_vars/all.yml` | Frappe develop requires `node >=24` |
+| Node.js | **24.21.0** (NodeSource package `24.21.0-1nodesource1`) | `group_vars/all.yml` | Frappe develop requires `node >=24` |
+| Frappe's Python packages | 145 exact versions | `ansible/roles/bench/files/python-constraints.txt` | Frappe's `~=` ranges would resolve differently weeks later; `bench init` installs this frozen set, and the `verify` role checks it |
+| Frappe's JS packages | Frappe's own `yarn.lock` | the pinned `frappe_commit` | yarn installs exactly what the commit's lockfile lists |
 | yarn | **1.22.22** | `group_vars/all.yml` | used by bench to build assets |
 | ansible-core | **2.21.4** | `ansible/requirements.txt` | installed into `/opt/ansible` in the VM or the image |
 | Ubuntu | 24.04 LTS | `Vagrantfile` (box) / `compose/Containerfile` (base image) | the same OS, so the same roles apply |
@@ -230,7 +232,7 @@ sudo mariadb -e "ALTER USER 'root'@'localhost' IDENTIFIED VIA unix_socket
 
 ```bash
 # Add the NodeSource apt repository (deb822 format, signed by the NodeSource key), then:
-sudo apt-get install -y nodejs          # 24.x
+sudo apt-get install -y nodejs=24.21.0-1nodesource1   # the exact pinned version
 sudo npm install --global yarn@1.22.22
 ```
 
@@ -253,7 +255,10 @@ git checkout -B develop FETCH_HEAD
 # Create the bench: this clones frappe, creates env/ with Python 3.14,
 # installs the Python and JS dependencies and builds the assets. --dev turns on
 # developer_mode and installs Frappe's dev/test dependencies.
+# The constraints hold every Python package at the version the tested build used.
 cd ~
+cp /vagrant/ansible/roles/bench/files/python-constraints.txt ~/python-constraints.txt
+UV_CONSTRAINT=~/python-constraints.txt PIP_CONSTRAINT=~/python-constraints.txt \
 bench init --frappe-path ~/src/frappe --frappe-branch develop \
            --python 3.14 --dev frappe-bench
 git -C frappe-bench/apps/frappe remote set-url upstream https://github.com/frappe/frappe.git
@@ -359,7 +364,9 @@ podman compose version                     # should print the podman-compose ver
 
 Pinned for this solution, in `compose.yaml`: `docker.io/library/mariadb:10.11`
 and `docker.io/library/redis:7.2-alpine`. The frappe image is built from
-`docker.io/library/ubuntu:24.04` (`compose/Containerfile`).
+`docker.io/library/ubuntu:24.04` (`compose/Containerfile`). Each is pinned as
+`tag@sha256:…`: the digest (a multi-arch index) is what's pulled, so a tag
+re-pointed upstream can't change the build; the tag says what it is.
 
 ### 4.2 Quick start
 
@@ -562,6 +569,7 @@ compose/                         chapter 4: frappe image (Containerfile) + entry
 scripts/bootstrap-ansible.sh     installs the pinned ansible-core (VM, image)
 scripts/backup.sh, restore.sh    site backup/restore (both solutions), see docs/ops.md
 scripts/install-backup-timer.sh  renders/verifies the systemd backup timer; never enables it
+scripts/freeze-python-deps.sh    regenerates the Python constraints from a green test build
 ops/systemd/                     backup timer and service templates
 ansible/
   site.yml                       the play (roles in chapter 2)

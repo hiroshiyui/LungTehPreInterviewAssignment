@@ -14,9 +14,10 @@ Where the pins live:
 |-----|------|
 | `BOX_VERSION` (`bento/ubuntu-24.04`) | `Vagrantfile` |
 | `ansible-core==…` | `ansible/requirements.txt` |
-| `uv_version`, `python_version`, `nodejs_major`, `yarn_version`, `bench_version`, `frappe_commit` | `ansible/group_vars/all.yml` |
-| `mariadb:10.11`, `redis:7.2-alpine` | `compose.yaml` |
-| `ubuntu:24.04` (frappe image base) | `compose/Containerfile` |
+| `uv_version`, `python_version`, `nodejs_major`, `nodejs_version`, `yarn_version`, `bench_version`, `frappe_commit` | `ansible/group_vars/all.yml` |
+| `mariadb:10.11@sha256:…`, `redis:7.2-alpine@sha256:…` | `compose.yaml` |
+| `ubuntu:24.04@sha256:…` (image bases) | `compose/Containerfile` and `tests/container/Containerfile` (same digest) |
+| Frappe's Python packages (145 `==` lines) | `ansible/roles/bench/files/python-constraints.txt` (generated) |
 
 This skill **reports**. Don't edit pins or run an upgrade without the user confirming the
 specific bumps.
@@ -29,8 +30,19 @@ specific bumps.
 # Current pins
 grep -E '^BOX_VERSION' Vagrantfile
 cat ansible/requirements.txt
-grep -E '^(uv_version|python_version|nodejs_major|yarn_version|bench_version|frappe_commit):' ansible/group_vars/all.yml
-grep -E 'image: |^FROM' compose.yaml compose/Containerfile
+grep -E '^(uv_version|python_version|nodejs_major|nodejs_version|yarn_version|bench_version|frappe_commit):' ansible/group_vars/all.yml
+grep -E 'image: |^FROM' compose.yaml compose/Containerfile tests/container/Containerfile
+
+# Current index digest behind each tag (compare with the pinned @sha256:…)
+for ref in library/ubuntu:24.04 library/mariadb:10.11 library/redis:7.2-alpine; do
+  repo=${ref%%:*}; tag=${ref##*:}
+  tok=$(curl -fsS "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$repo:pull" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+  curl -fsSI -H "Authorization: Bearer $tok" -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+    "https://registry-1.docker.io/v2/$repo/manifests/$tag" | grep -i docker-content-digest | sed "s|^|$ref |"
+done
+
+# Newest NodeSource build of the pinned major (in the test container)
+podman exec frappe-dev-test apt-cache madison nodejs | head -3
 
 # Container images: newest patch tag in each pinned series (read-only; pulls nothing)
 podman search --list-tags --limit 5000 docker.io/library/mariadb | awk '{print $2}' | grep -E '^10\.11\.[0-9]+$' | sort -V | tail -1
@@ -78,10 +90,17 @@ curl -s https://raw.githubusercontent.com/frappe/frappe/$C/frappe/__init__.py | 
 - **MariaDB image ↔ VM MariaDB**: both paths should run the same MariaDB series (Ubuntu
   24.04 ships 10.11). Moving the compose image to 11.x alone makes the paths diverge;
   report it as a project decision.
-- **Image tags float**: `mariadb:10.11` and `redis:7.2-alpine` receive patch updates under
-  the same tag. Report the gap between the local image and the newest patch tag; applying
-  it is `podman compose pull` plus a recreate, which is an *update* and needs confirmation
-  like any other. Digest pinning is a TODO in `docs/todos.md`.
+- **Image digests**: the tags `mariadb:10.11`, `redis:7.2-alpine` and `ubuntu:24.04` get
+  patch (and security) updates upstream, but the pinned digest doesn't move. Report when
+  the tag's current digest differs from the pin. Applying it means replacing the digest,
+  in both Containerfiles for Ubuntu, then running the full and compose gates. That's an
+  *update* and needs confirmation like any other.
+- **Python constraints ↔ `frappe_commit`**: moving the Frappe pin usually needs a
+  regenerated `python-constraints.txt`, because the old versions may not satisfy the new
+  commit and `bench init` then fails to resolve. The sequence is: move the pin, drop the
+  conflicting lines, run a green `tests/gate.sh`, run `scripts/freeze-python-deps.sh`,
+  then run the gates again. Report package updates within the constraints as one
+  "refresh the Python lock" item, not package by package.
 - **Box ↔ VirtualBox**: new bento boxes ship newer Guest Additions. Mention that users with
   older VirtualBox may need an upgrade.
 - **Ubuntu base**: this project stays on the 24.04 LTS box. Moving to a new LTS (26.04) is a

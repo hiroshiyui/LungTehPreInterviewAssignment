@@ -38,6 +38,38 @@
       - (not load_demo_data | bool) or (verify_report.json.message.result | length > 0)
     quiet: true
 
+# Reproducibility: the bench must hold exactly the constrained Python packages.
+- name: List the bench's Python packages
+  become: true
+  become_user: "{{ frappe_user }}"
+  environment: "{{ bench_env }}"
+  ansible.builtin.command:
+    argv: [uv, pip, freeze, --exclude-editable, --python, env/bin/python]
+    chdir: "{{ bench_path }}"
+  register: verify_python_freeze
+  changed_when: false
+
+- name: Read the Python constraints
+  ansible.builtin.slurp:
+    src: "{{ python_constraints_path }}"
+  register: verify_python_constraints
+
+- name: Check the packages match the constraints
+  vars:
+    verify_pinned: '^[A-Za-z0-9_.-]+=='
+    verify_installed: "{{ verify_python_freeze.stdout_lines | select('match', verify_pinned) | map('lower') | list }}"
+    verify_expected: >-
+      {{ (verify_python_constraints.content | b64decode).splitlines()
+         | select('match', verify_pinned) | map('lower') | list }}
+  ansible.builtin.assert:
+    that: verify_installed | sort == verify_expected | sort
+    fail_msg: >-
+      The bench's Python packages differ from roles/bench/files/python-constraints.txt.
+      Installed but not constrained: {{ verify_installed | difference(verify_expected) }}.
+      Constrained but not installed: {{ verify_expected | difference(verify_installed) }}.
+      After moving frappe_commit, regenerate the file with scripts/freeze-python-deps.sh.
+    quiet: true
+
 - name: Run the app's unit tests
   become: true
   become_user: "{{ frappe_user }}"

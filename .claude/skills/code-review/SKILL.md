@@ -34,8 +34,11 @@ The core promise is: *same inputs → same VM*. Anything that silently floats br
 
 - **Every version that affects the result is pinned** and lives in one place: the box in
   the `Vagrantfile`, ansible-core in `ansible/requirements.txt`, the MariaDB and redis
-  image tags in `compose.yaml`, and everything else in `ansible/group_vars/all.yml` (uv,
-  Python, Node major, yarn, frappe-bench, **`frappe_commit`**). Flag hardcoded versions inside roles, and `latest` / unpinned
+  images in `compose.yaml` and the Ubuntu base in both Containerfiles (as `tag@sha256:`
+  digests; a bare tag is a finding), Frappe's Python packages in
+  `ansible/roles/bench/files/python-constraints.txt` (generated, and checked by the
+  `verify` role), and everything else in `ansible/group_vars/all.yml` (uv, Python, Node
+  `nodejs_version`, yarn, frappe-bench, **`frappe_commit`**). Flag hardcoded versions inside roles, and `latest` / unpinned
   `pip install` / `npm install -g <pkg>` without a version.
 - Downloads are integrity-checked (the uv tarball uses a `sha256:` checksum URL). A new
   `get_url` without a `checksum:` is a finding.

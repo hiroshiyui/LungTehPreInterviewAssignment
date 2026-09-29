@@ -17,16 +17,6 @@ move it to "Decided against" with the reason.
   The gates only cover the API and unit tests. Consider a browser smoke test
   (Playwright) for the report page.
 
-## Reproducibility
-
-- [ ] Pin the container base images by **digest** (`ubuntu:24.04`,
-  `mariadb:10.11`, `redis:7.2-alpine`), not only by tag.
-- [ ] Frappe's own Python and JS dependencies resolve from the pinned commit's
-  `~=` / `^` ranges at `bench init` time, so two builds weeks apart can differ.
-  Consider capturing a lock (`uv pip freeze`, `yarn.lock`) at build time.
-- [ ] The Node.js patch version floats within `nodejs_major` (NodeSource).
-  Pin the exact apt version if that ever bites.
-
 ## Operations
 
 - [ ] Off-host backup copies: `scripts/backup.sh` writes to `./backups` on the
@@ -95,6 +85,11 @@ Remaining:
 - [ ] `CHANGELOG.md` and the first tagged release (`release-engineering` skill).
 
 ## Decided against
+
+- *Pinning Ubuntu's apt packages* (build tools, MariaDB in the VM, wkhtmltopdf,
+  fonts): they follow the 24.04 archive so they get security updates. Every
+  other input is pinned: image digests, `group_vars`, the Frappe commit,
+  Node.js, and Frappe's Python packages (`python-constraints.txt`).
 
 - *A dock entry for the HR Cost module (for now)*: at the pinned Frappe commit
   the desk's Dock, Sidebar and Desktop Icon are being reworked (see

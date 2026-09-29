@@ -1,6 +1,7 @@
 # Stand-in for the Vagrant box, used to test the playbook without VirtualBox:
 # Ubuntu 24.04 + systemd as PID 1 + a `vagrant` user (uid 1000).
-FROM docker.io/library/ubuntu:24.04
+# tag@digest, the same as compose/Containerfile: keep them in step.
+FROM docker.io/library/ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -y --no-install-recommends systemd systemd-sysv sudo \

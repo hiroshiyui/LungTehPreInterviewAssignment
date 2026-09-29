@@ -43,12 +43,15 @@ This skill covers security only. For correctness, tests and docs, use `code-revi
 - **Box and image provenance.** `bento/` is the Chef Bento project's namespace. The
   container images are Docker Official Images, fully qualified (`docker.io/library/…`).
   Flag an unknown publisher, or an unqualified short name (podman may resolve it through
-  another registry). Images are pinned by tag, not digest; that's a known gap tracked in
-  `docs/todos.md`.
-- **Lockfiles and dependencies.** Frappe's Python and JS dependencies resolve during
-  `bench init` from the pinned commit's manifests. `pyproject.toml` has `~=` ranges, so
-  builds are **not bit-for-bit reproducible**; note it rather than "fix" it. The app itself
-  declares no third-party dependencies; flag any added without a pin.
+  another registry). Images are pinned by `tag@sha256:` index digest; a bare tag is a
+  finding.
+- **Lockfiles and dependencies.** Frappe's Python packages are frozen in
+  `ansible/roles/bench/files/python-constraints.txt`: `bench init` gets it as
+  `UV_CONSTRAINT`, and the `verify` role checks that the bench matches it. JS comes from
+  Frappe's own `yarn.lock` at the pinned commit. Neither carries hashes: packages are
+  version-pinned, not hash-verified, and PyPI/npm integrity is trusted. Ubuntu's apt
+  packages follow the archive, which is deliberate so they get security updates. The
+  app itself declares no third-party dependencies; flag any added without a pin.
 
 ## Step 3 — Network exposure (A05)
 

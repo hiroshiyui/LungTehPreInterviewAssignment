@@ -69,6 +69,14 @@
       changed_when: "'UNCHANGED' not in bench_frappe_src.stdout"
 
     # --- bench ---------------------------------------------------------------
+    # The Python packages of the last green build, for bench init to install
+    # exactly (see the file's header).
+    - name: Install the Python constraints
+      ansible.builtin.copy:
+        src: python-constraints.txt
+        dest: "{{ python_constraints_path }}"
+        mode: "0644"
+
     - name: Check for an existing bench
       ansible.builtin.stat:
         path: "{{ bench_path }}/apps/frappe"
@@ -81,6 +89,9 @@
           ansible.builtin.command:
             argv: "{{ bench_init_argv + bench_init_container_flags + [bench_name] }}"
             chdir: "{{ frappe_home }}"
+          # bench installs with `uv pip install` (pip as a fallback); both read
+          # these, so every package is held at its constrained version.
+          environment: "{{ bench_env | combine({'UV_CONSTRAINT': python_constraints_path, 'PIP_CONSTRAINT': python_constraints_path}) }}"
           changed_when: true
           vars:
             bench_init_argv:
