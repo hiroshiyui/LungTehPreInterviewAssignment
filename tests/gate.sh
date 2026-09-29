@@ -26,6 +26,7 @@ case "${1:-}" in
   *) fail "unknown option: $1" ;;
 esac
 NAME=frappe-dev-test
+SITE=$(sed -n 's/^site_name: *//p' ansible/group_vars/all.yml)   # its one home
 LOG_DIR=$(mktemp -d)
 trap 'rm -rf "$LOG_DIR"' EXIT
 
@@ -52,7 +53,7 @@ if [[ "$MODE" == quick ]]; then
     || fail "container $NAME is not running; run tests/container/run.sh first"
   podman exec -u vagrant -w /home/vagrant/frappe-bench \
     -e PATH=/home/vagrant/.local/bin:/usr/local/bin:/usr/bin:/bin -e LANG=C.UTF-8 "$NAME" \
-    bench --site hrcost.localhost run-tests --app hr_cost || fail "unit tests"
+    bench --site "$SITE" run-tests --app hr_cost || fail "unit tests"
 elif [[ "$MODE" == compose ]]; then
   export FRAPPE_HOST_PORT=18080 FRAPPE_REALTIME_PORT=19000
   PC=(podman compose -p frappe-gate)

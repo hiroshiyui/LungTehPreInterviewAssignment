@@ -24,6 +24,9 @@ if ! podman container exists "$NAME"; then
     "$IMAGE" >/dev/null
 fi
 podman start "$NAME" >/dev/null
+# Let systemd finish booting first: the playbook manages services. "degraded"
+# (some unit failed) still counts as booted, so ignore the exit status.
+podman exec "$NAME" systemctl is-system-running --wait >/dev/null 2>&1 || true
 
 podman exec "$NAME" bash /vagrant/scripts/bootstrap-ansible.sh
 
