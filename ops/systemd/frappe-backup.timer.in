@@ -1,0 +1,13 @@
+# Rendered by scripts/install-backup-timer.sh. Never enabled automatically:
+# see docs/ops.md, "Scheduled backups".
+[Unit]
+Description=Daily backup of the Frappe dev site
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=15min
+# Run at next start-up if the machine was off at 03:00.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
